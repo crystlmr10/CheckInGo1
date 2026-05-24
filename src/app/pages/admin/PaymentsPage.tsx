@@ -1,194 +1,310 @@
-import { useState } from "react";
-import { 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
-  Search, 
-  MoreHorizontal, 
-  Filter, 
-  Download, 
-  ExternalLink 
-} from "lucide-react";
-
-// Mock data
-const PAYMENTS = [
-  { id: "P-1001", guest: "Maria Santos", room: "Private Queen A", amount: 3500, date: "2024-02-28", status: "pending", proof: "https://via.placeholder.com/300x400" },
-  { id: "P-1002", guest: "John Doe", room: "Dorm Bed 1", amount: 1200, date: "2024-02-27", status: "approved", proof: "https://via.placeholder.com/300x400" },
-  { id: "P-1003", guest: "Sarah Lee", room: "Family Suite", amount: 4500, date: "2024-02-26", status: "rejected", proof: "https://via.placeholder.com/300x400" },
-  { id: "P-1004", guest: "Mike Tan", room: "Private Queen B", amount: 1800, date: "2024-02-25", status: "approved", proof: "https://via.placeholder.com/300x400" },
-  { id: "P-1005", guest: "Anna Cruz", room: "Dorm Bed 2", amount: 650, date: "2024-02-24", status: "pending", proof: "https://via.placeholder.com/300x400" },
-];
+import { useState, useEffect } from "react";
+import { CheckCircle, XCircle, Clock, Search, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { supabase, type Booking } from "../../../lib/supabase";
 
 export function PaymentsPage() {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [updating, setUpdating] = useState(false);
 
-  const filteredPayments = PAYMENTS.filter(payment => {
-    const matchesStatus = filterStatus === "all" || payment.status === filterStatus;
-    const matchesSearch = payment.guest.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          payment.id.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesStatus && matchesSearch;
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("*, rooms(name, type, price)")
+      .order("created_at", { ascending: false });
+
+    if (!error && data) setBookings(data as Booking[]);
+    setLoading(false);
+  };
+
+  const updateStatus = async (id: string, status: "approved" | "rejected") => {
+    setUpdating(true);
+    const { error } = await supabase
+      .from("bookings")
+      .update({ status })
+      .eq("id", id);
+
+    if (!error) {
+      setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
+      setSelectedBooking(prev => prev?.id === id ? { ...prev, status } : prev);
+    }
+    setUpdating(false);
+  };
+
+  const filtered = bookings.filter(b => {
+    const matchStatus = filterStatus === "all" || b.status === filterStatus;
+    const matchSearch =
+      b.guest_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      b.guest_phone.includes(searchTerm) ||
+      b.id.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchStatus && matchSearch;
   });
+
+  const counts = {
+    pending: bookings.filter(b => b.status === "pending").length,
+    approved: bookings.filter(b => b.status === "approved").length,
+    rejected: bookings.filter(b => b.status === "rejected").length,
+  };
+
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+
+  const nights = (b: Booking) => {
+    const diff = new Date(b.check_out).getTime() - new Date(b.check_in).getTime();
+    return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  };
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Payment Transactions</h1>
-          <p className="text-gray-500 text-sm">Review and approve guest payments securely.</p>
+          <h1 className="text-2xl font-bold text-gray-800">Payment Verification</h1>
+          <p className="text-gray-500 text-sm">Review guest bookings and approve or reject payments.</p>
         </div>
-        <div className="flex gap-2">
-          <button className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
-            <Filter className="w-4 h-4" /> Filter
-          </button>
-          <button className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">
-            <Download className="w-4 h-4" /> Export CSV
-          </button>
+        <button
+          onClick={fetchBookings}
+          className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+        >
+          <RefreshCw className="w-4 h-4" /> Refresh
+        </button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-orange-600">{counts.pending}</p>
+          <p className="text-xs text-orange-700 font-medium mt-1">Pending</p>
+        </div>
+        <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-green-600">{counts.approved}</p>
+          <p className="text-xs text-green-700 font-medium mt-1">Approved</p>
+        </div>
+        <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-red-600">{counts.rejected}</p>
+          <p className="text-xs text-red-700 font-medium mt-1">Rejected</p>
         </div>
       </div>
 
+      {/* Search + Filter */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input 
-            type="text" 
-            placeholder="Search by guest name or ID..." 
-            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400"
+          <input
+            type="text"
+            placeholder="Search by name, phone, or booking ID..."
+            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
         <div className="flex bg-gray-100 p-1 rounded-lg">
-          {["all", "pending", "approved", "rejected"].map((status) => (
+          {["all", "pending", "approved", "rejected"].map(s => (
             <button
-              key={status}
-              onClick={() => setFilterStatus(status)}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium capitalize transition-all ${filterStatus === status ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              key={s}
+              onClick={() => setFilterStatus(s)}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium capitalize transition-all ${
+                filterStatus === s ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-700"
+              }`}
             >
-              {status}
+              {s}
             </button>
           ))}
         </div>
       </div>
 
+      {/* Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase font-medium">
-              <th className="py-3 px-6">Transaction ID</th>
-              <th className="py-3 px-6">Guest</th>
-              <th className="py-3 px-6">Room</th>
-              <th className="py-3 px-6">Date</th>
-              <th className="py-3 px-6">Amount</th>
-              <th className="py-3 px-6">Status</th>
-              <th className="py-3 px-6 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPayments.map((payment) => (
-              <tr key={payment.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors group">
-                <td className="py-4 px-6 font-mono text-xs text-gray-500">#{payment.id}</td>
-                <td className="py-4 px-6 font-medium text-gray-900">{payment.guest}</td>
-                <td className="py-4 px-6 text-sm text-gray-500">{payment.room}</td>
-                <td className="py-4 px-6 text-sm text-gray-500">{payment.date}</td>
-                <td className="py-4 px-6 font-bold text-gray-900">₱{payment.amount.toLocaleString()}</td>
-                <td className="py-4 px-6">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
-                    payment.status === 'approved' ? 'bg-green-100 text-green-700' : 
-                    payment.status === 'rejected' ? 'bg-red-100 text-red-700' : 
-                    'bg-yellow-100 text-yellow-700'
-                  }`}>
-                    {payment.status === 'approved' && <CheckCircle className="w-3 h-3" />}
-                    {payment.status === 'rejected' && <XCircle className="w-3 h-3" />}
-                    {payment.status === 'pending' && <Clock className="w-3 h-3" />}
-                    <span className="capitalize">{payment.status}</span>
-                  </span>
-                </td>
-                <td className="py-4 px-6 text-right">
-                  <button 
-                    onClick={() => setSelectedPayment(payment)}
-                    className="text-gray-400 hover:text-black p-2 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    <MoreHorizontal className="w-5 h-5" />
-                  </button>
-                </td>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
+          </div>
+        ) : (
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase font-medium">
+                <th className="py-3 px-4">Guest</th>
+                <th className="py-3 px-4">Room</th>
+                <th className="py-3 px-4">Dates</th>
+                <th className="py-3 px-4">Amount</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4 text-right">Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        
-        {filteredPayments.length === 0 && (
+            </thead>
+            <tbody>
+              {filtered.map(booking => (
+                <tr
+                  key={booking.id}
+                  className="border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                  onClick={() => setSelectedBooking(booking)}
+                >
+                  <td className="py-3 px-4">
+                    <p className="font-medium text-gray-900 text-sm">{booking.guest_name}</p>
+                    <p className="text-xs text-gray-400">{booking.guest_phone}</p>
+                  </td>
+                  <td className="py-3 px-4 text-sm text-gray-600">
+                    {booking.rooms?.name ?? `Room #${booking.room_id}`}
+                  </td>
+                  <td className="py-3 px-4 text-xs text-gray-500">
+                    <p>{formatDate(booking.check_in)}</p>
+                    <p>→ {formatDate(booking.check_out)}</p>
+                  </td>
+                  <td className="py-3 px-4 font-bold text-gray-900 text-sm">
+                    ₱{Number(booking.total_amount).toLocaleString()}
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                      booking.status === "approved" ? "bg-green-100 text-green-700" :
+                      booking.status === "rejected" ? "bg-red-100 text-red-700" :
+                      "bg-orange-100 text-orange-700"
+                    }`}>
+                      {booking.status === "approved" && <CheckCircle className="w-3 h-3" />}
+                      {booking.status === "rejected" && <XCircle className="w-3 h-3" />}
+                      {booking.status === "pending" && <Clock className="w-3 h-3" />}
+                      <span className="capitalize">{booking.status}</span>
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <button
+                      onClick={e => { e.stopPropagation(); setSelectedBooking(booking); }}
+                      className="text-sm font-medium text-orange-500 hover:underline"
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {!loading && filtered.length === 0 && (
           <div className="p-12 text-center text-gray-400">
-            <Search className="w-12 h-12 mx-auto mb-4 text-gray-200" />
-            <p>No transactions found matching your criteria.</p>
+            <Clock className="w-12 h-12 mx-auto mb-4 text-gray-200" />
+            <p>No bookings found.</p>
           </div>
         )}
       </div>
 
-      {/* Payment Detail Modal */}
-      {selectedPayment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col md:flex-row">
-            <div className="md:w-1/2 bg-gray-100 p-8 flex items-center justify-center relative">
-               <img src={selectedPayment.proof} alt="Proof of Payment" className="max-w-full max-h-64 object-contain shadow-lg rounded-lg" />
-               <a href={selectedPayment.proof} target="_blank" rel="noreferrer" className="absolute bottom-4 right-4 bg-white/80 p-2 rounded-lg hover:bg-white text-gray-600 hover:text-black transition-colors">
-                 <ExternalLink className="w-4 h-4" />
-               </a>
+      {/* Detail Modal */}
+      {selectedBooking && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setSelectedBooking(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col md:flex-row max-h-[90vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Payment Proof */}
+            <div className="md:w-1/2 bg-gray-100 p-6 flex items-center justify-center relative min-h-48">
+              {selectedBooking.payment_proof_url ? (
+                <>
+                  <img
+                    src={selectedBooking.payment_proof_url}
+                    alt="Proof of Payment"
+                    className="max-w-full max-h-72 object-contain shadow-lg rounded-lg"
+                  />
+                  <a
+                    href={selectedBooking.payment_proof_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="absolute bottom-4 right-4 bg-white/80 p-2 rounded-lg hover:bg-white text-gray-600 hover:text-black transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                </>
+              ) : (
+                <p className="text-gray-400 text-sm">No payment proof uploaded</p>
+              )}
             </div>
-            
-            <div className="md:w-1/2 p-8 flex flex-col">
-              <div className="flex justify-between items-start mb-6">
+
+            {/* Details */}
+            <div className="md:w-1/2 p-6 flex flex-col overflow-y-auto">
+              <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h2 className="text-xl font-bold">Payment Details</h2>
-                  <p className="text-sm text-gray-500">Transaction #{selectedPayment.id}</p>
+                  <h2 className="text-xl font-bold">Booking Details</h2>
+                  <p className="text-xs text-gray-400 font-mono mt-0.5">#{selectedBooking.id.slice(0, 8).toUpperCase()}</p>
                 </div>
-                <button onClick={() => setSelectedPayment(null)} className="text-gray-400 hover:text-black">
+                <button onClick={() => setSelectedBooking(null)} className="text-gray-400 hover:text-black">
                   <XCircle className="w-6 h-6" />
                 </button>
               </div>
 
-              <div className="space-y-4 mb-8 flex-1">
+              <div className="space-y-3 text-sm flex-1">
+                <Row label="Guest" value={selectedBooking.guest_name} />
+                <Row label="Phone" value={selectedBooking.guest_phone} />
+                {selectedBooking.guest_email && <Row label="Email" value={selectedBooking.guest_email} />}
+                <Row label="Room" value={selectedBooking.rooms?.name ?? `Room #${selectedBooking.room_id}`} />
+                <Row label="Check-in" value={formatDate(selectedBooking.check_in)} />
+                <Row label="Check-out" value={formatDate(selectedBooking.check_out)} />
+                <Row label="Nights" value={String(nights(selectedBooking))} />
+                <Row label="Guests" value={String(selectedBooking.guests)} />
+                <Row label="Total" value={`₱${Number(selectedBooking.total_amount).toLocaleString()}`} bold />
                 <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-500 text-sm">Guest Name</span>
-                  <span className="font-medium text-right">{selectedPayment.guest}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-500 text-sm">Room Type</span>
-                  <span className="font-medium text-right">{selectedPayment.room}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-500 text-sm">Date</span>
-                  <span className="font-medium text-right">{selectedPayment.date}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-500 text-sm">Total Amount</span>
-                  <span className="font-bold text-lg text-right">₱{selectedPayment.amount.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-gray-500 text-sm">Current Status</span>
+                  <span className="text-gray-500">Status</span>
                   <span className={`capitalize font-bold ${
-                    selectedPayment.status === 'approved' ? 'text-green-600' : 
-                    selectedPayment.status === 'rejected' ? 'text-red-600' : 
-                    'text-yellow-600'
-                  }`}>{selectedPayment.status}</span>
+                    selectedBooking.status === "approved" ? "text-green-600" :
+                    selectedBooking.status === "rejected" ? "text-red-600" :
+                    "text-orange-600"
+                  }`}>
+                    {selectedBooking.status}
+                  </span>
                 </div>
+                <Row label="Submitted" value={formatDate(selectedBooking.created_at)} />
               </div>
 
-              {selectedPayment.status === 'pending' && (
-                <div className="grid grid-cols-2 gap-4 mt-auto">
-                  <button className="flex items-center justify-center gap-2 bg-red-50 text-red-600 font-bold py-3 rounded-xl hover:bg-red-100 transition-colors">
-                    <XCircle className="w-5 h-5" /> Reject
+              {selectedBooking.status === "pending" && (
+                <div className="grid grid-cols-2 gap-3 mt-6">
+                  <button
+                    onClick={() => updateStatus(selectedBooking.id, "rejected")}
+                    disabled={updating}
+                    className="flex items-center justify-center gap-2 bg-red-50 text-red-600 font-bold py-3 rounded-xl hover:bg-red-100 transition-colors disabled:opacity-50"
+                  >
+                    {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                    Reject
                   </button>
-                  <button className="flex items-center justify-center gap-2 bg-green-500 text-white font-bold py-3 rounded-xl hover:bg-green-600 transition-colors shadow-lg shadow-green-200">
-                    <CheckCircle className="w-5 h-5" /> Approve
+                  <button
+                    onClick={() => updateStatus(selectedBooking.id, "approved")}
+                    disabled={updating}
+                    className="flex items-center justify-center gap-2 bg-green-500 text-white font-bold py-3 rounded-xl hover:bg-green-600 transition-colors disabled:opacity-50 shadow-lg shadow-green-200"
+                  >
+                    {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                    Approve
                   </button>
+                </div>
+              )}
+
+              {selectedBooking.status !== "pending" && (
+                <div className={`mt-6 text-center py-3 rounded-xl font-bold text-sm ${
+                  selectedBooking.status === "approved"
+                    ? "bg-green-50 text-green-700 border border-green-200"
+                    : "bg-red-50 text-red-700 border border-red-200"
+                }`}>
+                  {selectedBooking.status === "approved" ? "✓ Payment Approved" : "✗ Payment Rejected"}
                 </div>
               )}
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <div className="flex justify-between py-2 border-b border-gray-100">
+      <span className="text-gray-500">{label}</span>
+      <span className={bold ? "font-bold text-lg" : "font-medium text-right"}>{value}</span>
     </div>
   );
 }

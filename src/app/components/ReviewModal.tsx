@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Star, X, Send } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -67,7 +67,7 @@ export function ReviewModal({ isOpen, onClose }: ReviewModalProps) {
                 <>
                   <div className="text-center mb-8">
                     <h2 className="text-2xl font-bold text-gray-900">Rate Your Stay</h2>
-                    <p className="text-gray-500 text-sm mt-1">Share your experience at 4VJ's BrightBook</p>
+                    <p className="text-gray-500 text-sm mt-1">Share your experience at CheckInGo</p>
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-6">
@@ -86,14 +86,14 @@ export function ReviewModal({ isOpen, onClose }: ReviewModalProps) {
                             <Star 
                               className={`w-8 h-8 ${
                                 star <= (hoveredRating || rating) 
-                                  ? "fill-yellow-400 text-yellow-400" 
+                                  ? "fill-orange-400 text-orange-400" 
                                   : "text-gray-300"
                               }`} 
                             />
                           </button>
                         ))}
                       </div>
-                      <span className="text-sm font-medium text-yellow-500 h-5">
+                      <span className="text-sm font-medium text-orange-500 h-5">
                         {rating > 0 ? ["Poor", "Fair", "Good", "Very Good", "Excellent"][rating - 1] : ""}
                       </span>
                     </div>
@@ -105,7 +105,7 @@ export function ReviewModal({ isOpen, onClose }: ReviewModalProps) {
                           required
                           type="text" 
                           placeholder="e.g. Maria Santos"
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
                         />
                       </div>
                       
@@ -115,7 +115,7 @@ export function ReviewModal({ isOpen, onClose }: ReviewModalProps) {
                           required
                           rows={4}
                           placeholder="Tell us about your stay..."
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all resize-none"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all resize-none"
                         />
                       </div>
                     </div>

@@ -1,7 +1,6 @@
-import { Outlet, Link, useLocation } from "react-router";
-import { Menu, X, Sun, Moon, BatteryCharging } from "lucide-react";
+﻿import { Outlet, Link, useLocation } from "react-router";
+import { Menu, X, Sun, BatteryCharging } from "lucide-react";
 import { useState } from "react";
-import logo from "figma:asset/d2505d34771c9cc46206a68c4ffbc9e7910c859c.png";
 import { ChatWidget } from "./ChatWidget";
 
 export function Layout() {
@@ -11,7 +10,7 @@ export function Layout() {
   return (
     <div className="min-h-screen flex flex-col font-sans bg-gray-50 text-gray-900">
       {/* Top Bar - Solar Branding */}
-      <div className="bg-black text-yellow-400 py-2 px-4 text-xs sm:text-sm font-medium text-center flex items-center justify-center gap-2">
+      <div className="bg-black text-orange-400 py-2 px-4 text-xs sm:text-sm font-medium text-center flex items-center justify-center gap-2">
         <Sun className="w-4 h-4 animate-spin-slow" />
         <span>24/7 Solar Power — No Brownouts!</span>
         <BatteryCharging className="w-4 h-4 ml-1" />
@@ -20,14 +19,11 @@ export function Layout() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="relative w-10 h-10 overflow-hidden rounded-lg bg-black p-1 transition-transform group-hover:scale-105">
-              <img src={logo} alt="4VJ's Logo" className="w-full h-full object-contain" />
+          <Link to="/" className="flex items-center gap-2 group">
+            <div className="w-9 h-9 rounded-full bg-orange-400 flex items-center justify-center transition-transform group-hover:scale-105">
+              <Sun className="w-5 h-5 text-white" />
             </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-lg leading-tight tracking-tight">4VJ's BrightBook</span>
-              <span className="text-[10px] text-gray-500 font-medium tracking-wider">SOLAR-SMART APARTELLE</span>
-            </div>
+            <span className="font-bold text-xl tracking-tight text-gray-900">CheckInGo</span>
           </Link>
 
           {/* Desktop Nav */}
@@ -35,13 +31,6 @@ export function Layout() {
             <NavLink to="/" current={location.pathname}>Home</NavLink>
             <NavLink to="/rooms" current={location.pathname}>Rooms</NavLink>
             <NavLink to="/calendar" current={location.pathname}>Calendar</NavLink>
-            <NavLink to="/booking" current={location.pathname}>Book Now</NavLink>
-            <Link 
-              to="/admin/login" 
-              className="px-4 py-2 rounded-full bg-gray-100 text-xs font-semibold hover:bg-gray-200 transition-colors"
-            >
-              Owner Login
-            </Link>
           </nav>
 
           {/* Mobile Menu Button */}
@@ -70,25 +59,27 @@ export function Layout() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-black text-white py-12 border-t-4 border-yellow-400">
+      <footer className="bg-black text-white py-12 border-t-4 border-orange-400">
         <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
           <div>
             <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
-               <img src={logo} alt="4VJ's Logo" className="w-8 h-8 object-contain bg-white rounded p-0.5" />
-               <span className="font-bold text-xl">4VJ's Apartelle</span>
+              <div className="w-8 h-8 rounded-full bg-orange-400 flex items-center justify-center">
+                <Sun className="w-4 h-4 text-white" />
+              </div>
+              <span className="font-bold text-xl">CheckInGo</span>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed mb-4">
               Experience the sunny island vibe with reliable comfort. 
               Our solar-powered property ensures your stay is bright, eco-friendly, and uninterrupted.
             </p>
-            <div className="flex items-center justify-center md:justify-start gap-2 text-yellow-400 text-sm font-medium">
+            <div className="flex items-center justify-center md:justify-start gap-2 text-orange-400 text-sm font-medium">
               <Sun className="w-4 h-4" />
               <span>100% Solar Powered</span>
             </div>
           </div>
           
           <div>
-            <h3 className="font-bold text-lg mb-4 text-yellow-400">Location</h3>
+            <h3 className="font-bold text-lg mb-4 text-orange-400">Location</h3>
             <p className="text-gray-300 mb-2">A. Coyoca St, Santa Fe</p>
             <p className="text-gray-300 mb-2">Cebu, Philippines</p>
             <a href="https://maps.google.com" target="_blank" rel="noreferrer" className="text-xs text-gray-500 hover:text-white underline">
@@ -97,18 +88,21 @@ export function Layout() {
           </div>
 
           <div>
-            <h3 className="font-bold text-lg mb-4 text-yellow-400">Contact</h3>
+            <h3 className="font-bold text-lg mb-4 text-orange-400">Contact</h3>
             <p className="text-gray-300 mb-2">+63 929 6280 763</p>
             <p className="text-gray-300 mb-2">0418vjsapartelle@gmail.com</p>
             <div className="mt-4 flex justify-center md:justify-start gap-4">
               {/* Social Icons Placeholder */}
-              <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center hover:bg-yellow-400 hover:text-black transition-colors cursor-pointer">FB</div>
-              <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center hover:bg-yellow-400 hover:text-black transition-colors cursor-pointer">IG</div>
+              <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center hover:bg-orange-400 hover:text-black transition-colors cursor-pointer">FB</div>
+              <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center hover:bg-orange-400 hover:text-black transition-colors cursor-pointer">IG</div>
             </div>
           </div>
         </div>
-        <div className="mt-12 pt-8 border-t border-gray-800 text-center text-gray-500 text-xs">
-          © {new Date().getFullYear()} 4VJ's BrightBook System. All rights reserved.
+        <div className="mt-12 pt-8 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-2 text-gray-500 text-xs">
+          <span>© {new Date().getFullYear()} CheckInGo. All rights reserved.</span>
+          <Link to="/admin/login" className="text-gray-600 hover:text-orange-400 transition-colors">
+            Owner Login
+          </Link>
         </div>
       </footer>
       
@@ -123,7 +117,7 @@ function NavLink({ to, current, children }: { to: string, current: string, child
   return (
     <Link 
       to={to} 
-      className={`text-sm font-medium transition-colors hover:text-yellow-500 ${isActive ? 'text-black font-bold' : 'text-gray-600'}`}
+      className={`text-sm font-medium transition-colors hover:text-orange-500 ${isActive ? 'text-black font-bold' : 'text-gray-600'}`}
     >
       {children}
     </Link>
@@ -135,7 +129,7 @@ function MobileNavLink({ to, onClick, children }: { to: string, onClick: () => v
     <Link 
       to={to} 
       onClick={onClick}
-      className="block py-2 text-base font-medium text-gray-800 border-b border-gray-50 hover:text-yellow-600 hover:pl-2 transition-all"
+      className="block py-2 text-base font-medium text-gray-800 border-b border-gray-50 hover:text-orange-600 hover:pl-2 transition-all"
     >
       {children}
     </Link>

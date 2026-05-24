@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import { MessageSquare, Send, X, Paperclip, Smile } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { id: 1, text: "Welcome to 4VJ's BrightBook! How can we help you today?", sender: "admin", time: "Just now" }
+    { id: 1, text: "Welcome to CheckInGo! How can we help you today?", sender: "admin", time: "Just now" }
   ]);
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -58,8 +58,8 @@ export function ChatWidget() {
             <div className="bg-black p-4 flex justify-between items-center text-white">
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold text-sm">
-                    4VJ
+                  <div className="w-10 h-10 bg-orange-400 rounded-full flex items-center justify-center text-black font-bold text-sm">
+                    CIG
                   </div>
                   <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-black rounded-full"></div>
                 </div>
@@ -93,7 +93,7 @@ export function ChatWidget() {
                   <div 
                     className={`max-w-[85%] px-4 py-3 text-sm shadow-sm ${
                       msg.sender === 'user' 
-                        ? 'bg-yellow-400 text-black rounded-2xl rounded-tr-none' 
+                        ? 'bg-orange-400 text-black rounded-2xl rounded-tr-none' 
                         : 'bg-white text-gray-800 rounded-2xl rounded-tl-none border border-gray-200'
                     }`}
                   >
@@ -118,7 +118,7 @@ export function ChatWidget() {
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder="Type a message..." 
-                  className="flex-1 bg-gray-100 border-0 rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:outline-none transition-all"
+                  className="flex-1 bg-gray-100 border-0 rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none transition-all"
                 />
                 <button 
                   type="submit" 
@@ -135,7 +135,7 @@ export function ChatWidget() {
 
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="group relative flex items-center justify-center w-14 h-14 bg-yellow-400 text-black rounded-full shadow-lg hover:bg-yellow-500 hover:scale-110 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-yellow-200"
+        className="group relative flex items-center justify-center w-14 h-14 bg-orange-400 text-black rounded-full shadow-lg hover:bg-orange-500 hover:scale-110 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-orange-200"
       >
         <AnimatePresence mode="wait">
           {isOpen ? (

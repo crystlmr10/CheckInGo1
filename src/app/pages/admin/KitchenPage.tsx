@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { 
   CheckCircle, 
   Clock, 
@@ -30,7 +30,7 @@ export function KitchenPage() {
           <h1 className="text-2xl font-bold text-gray-800">Kitchen Orders</h1>
           <p className="text-gray-500 text-sm">Manage breakfast preparations efficiently.</p>
         </div>
-        <div className="flex items-center gap-2 bg-yellow-50 px-3 py-1 rounded-lg border border-yellow-200 text-yellow-800 text-xs font-bold">
+        <div className="flex items-center gap-2 bg-orange-50 px-3 py-1 rounded-lg border border-orange-200 text-orange-800 text-xs font-bold">
           <AlertCircle className="w-4 h-4" />
           <span>3 Orders Pending for Today</span>
         </div>

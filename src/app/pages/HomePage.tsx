@@ -1,270 +1,181 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
-import { ReviewModal } from "../components/ReviewModal";
-import { Sun, Star, MapPin, Users, Calendar, Wifi, Coffee, Wind, ArrowRight, PenSquare } from "lucide-react";
-import { motion } from "motion/react";
+import { Sun, Wifi, Wind, BedDouble, Users, ChevronRight, BatteryCharging, Star, Loader2 } from "lucide-react";
+import { supabase, type Room } from "../../lib/supabase";
+
+const HIGHLIGHTS = [
+  { icon: Sun, label: "Solar Powered", desc: "24/7 power, no brownouts" },
+  { icon: Wifi, label: "Free WiFi", desc: "Fast internet in all rooms" },
+  { icon: Wind, label: "Air-Conditioned", desc: "All rooms fully air-conditioned" },
+  { icon: BedDouble, label: "Multiple Room Types", desc: "Standard, Family, Barkada & more" },
+];
+
+const PREVIEW_TYPES = ["Barkada", "Family", "Standard"];
 
 export function HomePage() {
-  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [previews, setPreviews] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchPreviews() {
+      const { data, error } = await supabase
+        .from("rooms")
+        .select("id, name, type, price, capacity, image_url, description")
+        .in("type", PREVIEW_TYPES)
+        .order("type")
+        .order("id");
+
+      if (!error && data) {
+        // Pick one representative room per type
+        const picked: Room[] = [];
+        for (const type of PREVIEW_TYPES) {
+          const match = data.find(r => r.type === type);
+          if (match) picked.push(match as Room);
+        }
+        setPreviews(picked);
+      }
+      setLoading(false);
+    }
+    fetchPreviews();
+  }, []);
 
   return (
-    <div className="flex flex-col">
-      {/* Hero Section */}
-      <section className="relative h-[80vh] min-h-[600px] flex items-center justify-center text-white">
-        <div className="absolute inset-0 bg-black/40 z-10" />
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1637851522639-2d54fec9125e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjB0cm9waWNhbCUyMHJlc29ydCUyMGV4dGVyaW9yJTIwc3VubnklMjBwaGlsaXBwaW5lc3xlbnwxfHx8fDE3NzIyNTQ5MjN8MA&ixlib=rb-4.1.0&q=80&w=1080')" }}
-        />
-        
-        <div className="relative z-20 container mx-auto px-4 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <div className="inline-flex items-center gap-2 bg-yellow-400 text-black px-4 py-1 rounded-full text-sm font-bold mb-6">
-              <Sun className="w-4 h-4 animate-spin-slow" />
-              <span>24/7 Solar Power — No Brownouts!</span>
-            </div>
-            <h1 className="text-4xl md:text-6xl font-bold mb-4 leading-tight drop-shadow-lg">
-              Stay Bright in Santa Fe
-            </h1>
-            <p className="text-lg md:text-xl text-gray-100 max-w-2xl mx-auto mb-10 drop-shadow-md">
-              Experience the perfect island getaway with uninterrupted comfort. 
-              Relax, recharge, and enjoy the sunny vibe of Cebu.
-            </p>
-          </motion.div>
-
-          {/* Search Bar Widget */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '32px',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginTop: '32px'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#FACC15', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
-              <Wifi style={{ width: '24px', height: '24px' }} />
-              <span style={{ fontSize: '1.125rem' }}>Free Wifi</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#FACC15', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m4 4 2.5 2.5"/><path d="M13.5 6.5a4.95 4.95 0 0 0-7 7"/><path d="M15 5 5 15"/><path d="M14 17v.01"/><path d="M10 16v.01"/><path d="M13 13v.01"/><path d="M16 10v.01"/><path d="M11 20v.01"/><path d="M17 14v.01"/><path d="M20 11v.01"/></svg>
-              <span style={{ fontSize: '1.125rem' }}>Private CR w/ Shower</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#FACC15', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
-              <Wind style={{ width: '24px', height: '24px' }} />
-              <span style={{ fontSize: '1.125rem' }}>Airconditioned</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#FACC15', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
-              <Coffee style={{ width: '24px', height: '24px' }} />
-              <span style={{ fontSize: '1.125rem' }}>Free Coffee</span>
-            </div>
-          </motion.div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero */}
+      <section className="relative bg-black text-white overflow-hidden">
+        <div className="absolute inset-0">
+          <img
+            src="https://images.unsplash.com/photo-1566073771259-6a8506099945?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1600"
+            alt="Property"
+            className="w-full h-full object-cover opacity-30"
+          />
         </div>
-      </section>
-
-      {/* Room Preview Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Choose Your Stay</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Whether you're a solo backpacker or a couple seeking privacy, 
-              we have the perfect solar-powered space for you.
-            </p>
+        <div className="relative container mx-auto px-4 py-24 md:py-36 flex flex-col items-center text-center">
+          <div className="inline-flex items-center gap-2 bg-orange-400/20 border border-orange-400/40 text-orange-300 text-xs font-semibold px-4 py-1.5 rounded-full mb-6">
+            <BatteryCharging className="w-3.5 h-3.5" />
+            100% Solar Powered — No Brownouts
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            {/* Dorm Card */}
-            <RoomCard 
-              image="https://images.unsplash.com/photo-1549881567-c622c1080d78?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkb3JtJTIwcm9vbSUyMGhvc3RlbCUyMGJ1bmslMjBiZWRzJTIwbW9kZXJufGVufDF8fHx8MTc3MjI1NDkyM3ww&ixlib=rb-4.1.0&q=80&w=1080"
-              title="Barkada Room"
-              price="₱800"
-              unit="per night"
-              capacity="8 Beds (Mixed)"
-              amenities={['Aircon', 'Shared Bath', 'Free WiFi']}
-              link="/rooms"
-              delay={0.1}
-            />
-
-            {/* Private Card */}
-            <RoomCard 
-              image="https://images.unsplash.com/photo-1611892440504-42a792e24d32?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3p5JTIwcHJpdmF0ZSUyMGhvdGVsJTIwcm9vbSUyMHRyb3BpY2FsJTIwYnJpZ2h0fGVufDF8fHx8MTc3MjI1NDkyM3ww&ixlib=rb-4.1.0&q=80&w=1080"
-              title="Standard Room"
-              price="₱1,200"
-              unit="per night"
-              capacity="2 Guests"
-              amenities={['Free WiFi', 'Private Bath']}
-              link="/rooms"
-              delay={0.2}
-              isPopular
-            />
-          </div>
-          
-          <div className="text-center mt-12">
-            <Link to="/rooms" className="inline-flex items-center text-black font-bold border-b-2 border-yellow-400 pb-1 hover:text-yellow-600 transition-colors group">
-              View All Rooms <ArrowRight className="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform" />
+          <h1 className="text-4xl md:text-6xl font-extrabold mb-4 leading-tight">
+            Your Home Away<br />
+            <span className="text-orange-400">from Home</span>
+          </h1>
+          <p className="text-gray-300 text-lg md:text-xl max-w-xl mb-8">
+            Affordable, comfortable stays in Santa Fe, Cebu.
+            Solar-powered rooms starting at <span className="text-orange-400 font-bold">₱1,000/night</span>.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Link
+              to="/rooms"
+              className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-4 rounded-xl transition-colors flex items-center gap-2 justify-center"
+            >
+              Browse Rooms <ChevronRight className="w-4 h-4" />
+            </Link>
+            <Link
+              to="/calendar"
+              className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-8 py-4 rounded-xl transition-colors"
+            >
+              Check Availability
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-20 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-            <div className="relative">
-              <div className="absolute -top-4 -left-4 w-20 h-20 bg-yellow-100 rounded-full z-0"></div>
-              <img 
-                src="https://images.unsplash.com/photo-1564783538911-cd6bb5d6bed2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMHRyYXZlbGVyJTIwcG9ydHJhaXQlMjBhc2lhbnxlbnwxfHx8fDE3NzIyNTQ5MjN8MA&ixlib=rb-4.1.0&q=80&w=1080" 
-                alt="Happy Guest" 
-                className="relative z-10 rounded-2xl shadow-xl w-full max-w-md mx-auto object-cover aspect-[4/5]"
-              />
-              <div className="absolute -bottom-6 -right-6 bg-white p-6 rounded-xl shadow-lg z-20 max-w-xs hidden md:block border border-gray-100">
-                <div className="flex text-yellow-400 mb-2">
-                  <Star className="w-4 h-4 fill-current" />
-                  <Star className="w-4 h-4 fill-current" />
-                  <Star className="w-4 h-4 fill-current" />
-                  <Star className="w-4 h-4 fill-current" />
-                  <Star className="w-4 h-4 fill-current" />
-                </div>
-                <p className="text-sm font-medium text-gray-800">"Best stay in Santa Fe! The solar power was a lifesaver during the island brownout."</p>
+      {/* Highlights */}
+      <section className="bg-white py-12 border-b border-gray-100">
+        <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6">
+          {HIGHLIGHTS.map(({ icon: Icon, label, desc }) => (
+            <div key={label} className="flex flex-col items-center text-center gap-2">
+              <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center mb-1">
+                <Icon className="w-6 h-6 text-orange-500" />
               </div>
+              <p className="font-bold text-gray-900">{label}</p>
+              <p className="text-sm text-gray-500">{desc}</p>
             </div>
-            
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-bold">What Our Guests Say</h2>
-                <button 
-                  onClick={() => setIsReviewOpen(true)}
-                  className="flex items-center gap-2 text-sm font-bold text-black border border-black px-4 py-2 rounded-lg hover:bg-black hover:text-white transition-colors"
-                >
-                  <PenSquare className="w-4 h-4" /> Write a Review
-                </button>
-              </div>
-              <div className="space-y-8">
-                <Testimonial 
-                  name="Maria Santos"
-                  date="April 2024"
-                  review="I loved the cozy vibe and the friendly staff. The location is perfect, just a short walk to the beach. The solar power guarantee is real!"
-                />
-                <Testimonial 
-                  name="John Doe"
-                  date="March 2024"
-                  review="Super clean rooms and the breakfast was delicious. Renting a bike directly from them made exploring the island so easy."
-                />
-                <Testimonial 
-                  name="Sarah Lee"
-                  date="February 2024"
-                  review="Great value for money. The dorms are spacious and clean. Will definitely come back!"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Map Section */}
-      <section className="h-[400px] relative bg-gray-200">
-        <img 
-          src="https://images.unsplash.com/photo-1738528418555-32ca3188255b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cm9waWNhbCUyMGJlYWNoJTIwYWVyaWFsJTIwdmlldyUyMHBoaWxpcHBpbmVzfGVufDF8fHx8MTc3MjI1NDkyM3ww&ixlib=rb-4.1.0&q=80&w=1080" 
-          alt="Map Background" 
-          className="w-full h-full object-cover opacity-60 grayscale hover:grayscale-0 transition-all duration-700"
-        />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-xl shadow-2xl text-center max-w-sm mx-4">
-            <MapPin className="w-10 h-10 text-yellow-400 mx-auto mb-3" />
-            <h3 className="font-bold text-xl mb-1">Find Us in Paradise</h3>
-            <p className="text-gray-600 mb-4">A. Coyoca St, Santa Fe, Cebu</p>
-            <a 
-              href="https://maps.google.com" 
-              target="_blank" 
-              rel="noreferrer"
-              className="inline-block bg-black text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-yellow-400 hover:text-black transition-colors"
-            >
-              Get Directions
-            </a>
-          </div>
-        </div>
-      </section>
-
-      <ReviewModal isOpen={isReviewOpen} onClose={() => setIsReviewOpen(false)} />
-    </div>
-  );
-}
-
-function RoomCard({ image, title, price, unit, capacity, amenities, link, delay, isPopular }: any) {
-  return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ delay, duration: 0.5 }}
-      className="bg-white rounded-2xl overflow-hidden shadow-lg border border-gray-100 group hover:shadow-xl transition-shadow relative flex flex-col"
-    >
-      {isPopular && (
-        <div className="absolute top-4 right-4 bg-yellow-400 text-black text-xs font-bold px-3 py-1 rounded-full z-10 shadow-sm">
-          MOST POPULAR
-        </div>
-      )}
-      <div className="relative h-64 overflow-hidden">
-        <img src={image} alt={title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-        <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm text-yellow-400 text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
-          <Sun className="w-3 h-3" /> 24/7 Power
-        </div>
-      </div>
-      <div className="p-6 flex-1 flex flex-col">
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="text-xl font-bold text-gray-900">{title}</h3>
-          <div className="text-right">
-            <span className="block text-xl font-bold text-black">{price}</span>
-            <span className="text-xs text-gray-500">{unit}</span>
-          </div>
-        </div>
-        
-        <div className="flex items-center text-gray-600 text-sm mb-4">
-          <Users className="w-4 h-4 mr-2" />
-          {capacity}
-        </div>
-
-        <div className="flex flex-wrap gap-2 mb-6">
-          {amenities.map((item: string, i: number) => (
-            <span key={i} className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-md">{item}</span>
           ))}
         </div>
+      </section>
 
-        <div className="mt-auto">
-          <Link to={link} className="block w-full text-center border border-black text-black font-bold py-3 rounded-lg hover:bg-black hover:text-white transition-colors">
-            View Details
+      {/* Room Previews */}
+      <section className="container mx-auto px-4 py-16">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-3xl font-extrabold text-gray-900">Our Rooms</h2>
+            <p className="text-gray-500 mt-1">Pick the room that fits your crew</p>
+          </div>
+          <Link to="/rooms" className="hidden md:flex items-center gap-1 text-orange-500 font-semibold hover:underline">
+            View All <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
-      </div>
-    </motion.div>
-  );
-}
 
-function Testimonial({ name, date, review }: any) {
-  return (
-    <div className="border-l-4 border-yellow-400 pl-4 py-1">
-      <div className="flex text-yellow-400 mb-2">
-        <Star className="w-4 h-4 fill-current" />
-        <Star className="w-4 h-4 fill-current" />
-        <Star className="w-4 h-4 fill-current" />
-        <Star className="w-4 h-4 fill-current" />
-        <Star className="w-4 h-4 fill-current" />
-      </div>
-      <p className="text-gray-600 italic mb-2">"{review}"</p>
-      <div className="text-sm">
-        <span className="font-bold text-black block">{name}</span>
-        <span className="text-gray-400 text-xs">{date}</span>
-      </div>
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {previews.map(room => (
+              <div key={room.id} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <div className="h-48 overflow-hidden">
+                  <img
+                    src={room.image_url || "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800"}
+                    alt={room.name}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+                <div className="p-5">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-bold text-lg text-gray-900">{room.name}</h3>
+                    <div className="text-right">
+                      <p className="font-bold text-gray-900">₱{Number(room.price).toLocaleString()}</p>
+                      <p className="text-xs text-gray-400">per night</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500 mb-3 flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5" /> Up to {room.capacity} guests
+                  </p>
+                  <p className="text-sm text-gray-500 mb-4 line-clamp-2">{room.description}</p>
+                  <Link
+                    to="/rooms"
+                    className="block text-center bg-black text-white font-bold py-2.5 rounded-xl hover:bg-orange-500 transition-colors text-sm"
+                  >
+                    Book Now
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-6 text-center md:hidden">
+          <Link to="/rooms" className="text-orange-500 font-semibold hover:underline flex items-center gap-1 justify-center">
+            View All Rooms <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </section>
+
+      {/* Why Choose Us */}
+      <section className="bg-black text-white py-16">
+        <div className="container mx-auto px-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            {[...Array(5)].map((_, i) => (
+              <Star key={i} className="w-5 h-5 text-orange-400 fill-orange-400" />
+            ))}
+          </div>
+          <h2 className="text-3xl font-extrabold mb-3">
+            Why Stay at <span className="text-orange-400">4vjsa Apartelle</span>?
+          </h2>
+          <p className="text-gray-400 max-w-xl mx-auto mb-10">
+            Located in the heart of Santa Fe, Cebu — steps away from beaches, markets, and local spots.
+            Our solar-powered property means you'll never deal with brownout frustrations.
+          </p>
+          <Link
+            to="/booking"
+            className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold px-10 py-4 rounded-xl transition-colors"
+          >
+            Book Your Stay
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }

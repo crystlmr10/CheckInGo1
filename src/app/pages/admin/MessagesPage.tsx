@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Search, Send, Paperclip, MoreVertical, Phone, Video, User, Circle } from "lucide-react";
 
 // Mock Data
@@ -67,7 +67,7 @@ export function MessagesPage() {
             <input 
               type="text" 
               placeholder="Search conversations..." 
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
             />
           </div>
         </div>
@@ -77,7 +77,7 @@ export function MessagesPage() {
             <div 
               key={chat.id}
               onClick={() => setActiveChat(chat)}
-              className={`p-4 flex items-center gap-3 hover:bg-gray-50 cursor-pointer transition-colors ${activeChat.id === chat.id ? 'bg-yellow-50/50 border-r-4 border-yellow-400' : ''}`}
+              className={`p-4 flex items-center gap-3 hover:bg-gray-50 cursor-pointer transition-colors ${activeChat.id === chat.id ? 'bg-orange-50/50 border-r-4 border-orange-400' : ''}`}
             >
               <div className="relative">
                 <img src={chat.avatar} alt={chat.guest} className="w-10 h-10 rounded-full object-cover" />
@@ -97,7 +97,7 @@ export function MessagesPage() {
                 </p>
               </div>
               {chat.unread > 0 && (
-                <div className="bg-yellow-400 text-black text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                <div className="bg-orange-400 text-black text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
                   {chat.unread}
                 </div>
               )}
@@ -167,12 +167,12 @@ export function MessagesPage() {
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Type your message..." 
-              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all"
+              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
             />
             <button 
               type="submit" 
               disabled={!newMessage.trim()}
-              className="bg-yellow-400 text-black p-3 rounded-xl hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md"
+              className="bg-orange-400 text-black p-3 rounded-xl hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md"
             >
               <Send className="w-5 h-5" />
             </button>

@@ -107,7 +107,7 @@ export function ReportsPage() {
               <TrendingUp className="w-3 h-3" /> +5% vs last month
             </span>
           </div>
-          <div className="p-3 bg-yellow-50 rounded-xl text-yellow-600">
+          <div className="p-3 bg-orange-50 rounded-xl text-orange-600">
             <DollarSign className="w-6 h-6" />
           </div>
         </div>
