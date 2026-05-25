@@ -15,6 +15,8 @@ export type Booking = {
   check_out: string;
   guests: number;
   total_amount: number;
+  reservation_fee: number;
+  balance: number;
   status: string;
   payment_proof_url: string | null;
   created_at: string;
@@ -38,6 +40,24 @@ export type Room = {
 export type DiscountSetting = {
   active: boolean;
   percent: 10 | 20 | 30;
+};
+
+export type ChatSession = {
+  id: string;
+  session_id: string;
+  guest_name: string | null;
+  last_message: string | null;
+  unread_count: number;
+  created_at: string;
+  last_message_at: string;
+};
+
+export type ChatMessage = {
+  id: string;
+  session_id: string;
+  sender: "user" | "admin";
+  text: string;
+  created_at: string;
 };
 
 export async function getDiscountSetting(): Promise<DiscountSetting> {

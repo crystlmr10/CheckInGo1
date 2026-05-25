@@ -1,11 +1,15 @@
 ﻿import { Outlet, Link, useLocation } from "react-router";
 import { Menu, X, Sun } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChatWidget } from "./ChatWidget";
 
 export function Layout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-gray-50 text-gray-900">

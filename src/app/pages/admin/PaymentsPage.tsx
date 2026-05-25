@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { CheckCircle, XCircle, Clock, Search, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Search, ExternalLink, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { supabase, type Booking } from "../../../lib/supabase";
+import { sendBookingNotification } from "../../../lib/notify";
 
 export function PaymentsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -9,6 +10,7 @@ export function PaymentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   useEffect(() => {
     fetchBookings();
@@ -25,6 +27,17 @@ export function PaymentsPage() {
     setLoading(false);
   };
 
+  const cancelBooking = async (id: string) => {
+    setUpdating(true);
+    const { error } = await supabase.from("bookings").delete().eq("id", id);
+    if (!error) {
+      setBookings(prev => prev.filter(b => b.id !== id));
+      setSelectedBooking(null);
+      setConfirmCancel(false);
+    }
+    setUpdating(false);
+  };
+
   const updateStatus = async (id: string, status: "approved" | "rejected") => {
     setUpdating(true);
     const { error } = await supabase
@@ -33,8 +46,12 @@ export function PaymentsPage() {
       .eq("id", id);
 
     if (!error) {
+      const updatedBooking = bookings.find(b => b.id === id);
       setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
       setSelectedBooking(prev => prev?.id === id ? { ...prev, status } : prev);
+      if (updatedBooking) {
+        sendBookingNotification({ ...updatedBooking, status }, status).catch(() => {});
+      }
     }
     setUpdating(false);
   };
@@ -134,7 +151,9 @@ export function PaymentsPage() {
                 <th className="py-3 px-4">Guest</th>
                 <th className="py-3 px-4">Room</th>
                 <th className="py-3 px-4">Dates</th>
-                <th className="py-3 px-4">Amount</th>
+                <th className="py-3 px-4">Total Amount</th>
+                <th className="py-3 px-4">Res. Fee</th>
+                <th className="py-3 px-4">Balance Due</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
@@ -160,6 +179,19 @@ export function PaymentsPage() {
                   <td className="py-3 px-4 font-bold text-gray-900 text-sm">
                     ₱{Number(booking.total_amount).toLocaleString()}
                   </td>
+                  <td className="py-3 px-4 text-sm text-green-700 font-semibold">
+                    ₱{Number(booking.reservation_fee ?? 1000).toLocaleString()}
+                  </td>
+                  {(() => {
+                    const bal = Number(booking.balance ?? (booking.total_amount - (booking.reservation_fee ?? 1000)));
+                    return (
+                      <td className={`py-3 px-4 text-sm font-semibold ${bal < 0 ? "text-red-600" : "text-orange-700"}`}>
+                        {bal < 0
+                          ? <>-₱{Math.abs(bal).toLocaleString()} <span className="text-xs font-normal">(owner refunds)</span></>
+                          : `₱${bal.toLocaleString()}`}
+                      </td>
+                    );
+                  })()}
                   <td className="py-3 px-4">
                     <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
                       booking.status === "approved" ? "bg-green-100 text-green-700" :
@@ -198,7 +230,7 @@ export function PaymentsPage() {
       {selectedBooking && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          onClick={() => setSelectedBooking(null)}
+          onClick={() => { setSelectedBooking(null); setConfirmCancel(false); }}
         >
           <div
             className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col md:flex-row max-h-[90vh]"
@@ -234,7 +266,7 @@ export function PaymentsPage() {
                   <h2 className="text-xl font-bold">Booking Details</h2>
                   <p className="text-xs text-gray-400 font-mono mt-0.5">#{selectedBooking.id.slice(0, 8).toUpperCase()}</p>
                 </div>
-                <button onClick={() => setSelectedBooking(null)} className="text-gray-400 hover:text-black">
+                <button onClick={() => { setSelectedBooking(null); setConfirmCancel(false); }} className="text-gray-400 hover:text-black">
                   <XCircle className="w-6 h-6" />
                 </button>
               </div>
@@ -248,7 +280,14 @@ export function PaymentsPage() {
                 <Row label="Check-out" value={formatDate(selectedBooking.check_out)} />
                 <Row label="Nights" value={String(nights(selectedBooking))} />
                 <Row label="Guests" value={String(selectedBooking.guests)} />
-                <Row label="Total" value={`₱${Number(selectedBooking.total_amount).toLocaleString()}`} bold />
+                <Row label="Total Amount" value={`₱${Number(selectedBooking.total_amount).toLocaleString()}`} bold />
+                <Row label="Reservation Fee Paid" value={`₱${Number(selectedBooking.reservation_fee ?? 1000).toLocaleString()}`} color="green" />
+                {(() => {
+                  const bal = Number(selectedBooking.balance ?? (selectedBooking.total_amount - (selectedBooking.reservation_fee ?? 1000)));
+                  return bal < 0
+                    ? <Row label="Refund to Guest (owner pays)" value={`-₱${Math.abs(bal).toLocaleString()}`} color="red" />
+                    : <Row label="Balance Due at Check-in" value={`₱${bal.toLocaleString()}`} color="orange" />;
+                })()}
                 <div className="flex justify-between py-2 border-b border-gray-100">
                   <span className="text-gray-500">Status</span>
                   <span className={`capitalize font-bold ${
@@ -292,6 +331,38 @@ export function PaymentsPage() {
                   {selectedBooking.status === "approved" ? "✓ Payment Approved" : "✗ Payment Rejected"}
                 </div>
               )}
+
+              {/* Cancel Booking */}
+              {!confirmCancel ? (
+                <button
+                  onClick={() => setConfirmCancel(true)}
+                  className="mt-4 w-full flex items-center justify-center gap-2 border border-red-200 text-red-500 font-semibold py-2.5 rounded-xl hover:bg-red-50 transition-colors text-sm"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Cancel Booking
+                </button>
+              ) : (
+                <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4">
+                  <p className="text-sm text-red-700 font-semibold text-center mb-3">Delete this booking permanently?</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setConfirmCancel(false)}
+                      disabled={updating}
+                      className="py-2 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-100 transition-colors disabled:opacity-50"
+                    >
+                      Keep
+                    </button>
+                    <button
+                      onClick={() => cancelBooking(selectedBooking.id)}
+                      disabled={updating}
+                      className="py-2 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+                    >
+                      {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      Yes, Delete
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -300,11 +371,20 @@ export function PaymentsPage() {
   );
 }
 
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function Row({ label, value, bold, color }: { label: string; value: string; bold?: boolean; color?: "green" | "orange" | "red" }) {
+  const valueClass = bold
+    ? "font-bold text-lg"
+    : color === "green"
+    ? "font-semibold text-green-600 text-right"
+    : color === "orange"
+    ? "font-semibold text-orange-600 text-right"
+    : color === "red"
+    ? "font-semibold text-red-600 text-right"
+    : "font-medium text-right";
   return (
     <div className="flex justify-between py-2 border-b border-gray-100">
       <span className="text-gray-500">{label}</span>
-      <span className={bold ? "font-bold text-lg" : "font-medium text-right"}>{value}</span>
+      <span className={valueClass}>{value}</span>
     </div>
   );
 }

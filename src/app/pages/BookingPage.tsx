@@ -2,7 +2,7 @@
 import { useSearchParams, Link } from "react-router";
 import { Calendar, CreditCard, ChevronLeft, Upload, Check, Loader2, User, Phone, Mail, AlertCircle } from "lucide-react";
 import { motion } from "motion/react";
-import { supabase, type Room } from "../../lib/supabase";
+import { supabase, type Room, getDiscountSetting, type DiscountSetting } from "../../lib/supabase";
 
 const ROOM_GUEST_RANGE: Record<string, { min: number; max: number }> = {
   Single:   { min: 1, max: 1 },
@@ -23,6 +23,7 @@ export function BookingPage() {
 
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(true);
+  const [discount, setDiscount] = useState<DiscountSetting>({ active: false, percent: 10 });
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -40,13 +41,17 @@ export function BookingPage() {
   });
 
   useEffect(() => {
-    async function fetchRooms() {
-      const { data, error } = await supabase
-        .from("rooms")
-        .select("id, name, type, price, capacity")
-        .gt("available", 0)
-        .order("type")
-        .order("name");
+    async function fetchData() {
+      const [roomsResult] = await Promise.all([
+        supabase
+          .from("rooms")
+          .select("id, name, type, price, capacity")
+          .gt("available", 0)
+          .order("type")
+          .order("name"),
+        getDiscountSetting().then(setDiscount),
+      ]);
+      const { data, error } = roomsResult;
       if (!error && data) {
         setRooms(data as Room[]);
         const firstRoom = initialRoomId
@@ -63,7 +68,7 @@ export function BookingPage() {
       }
       setLoadingRooms(false);
     }
-    fetchRooms();
+    fetchData();
   }, []);
 
   const selectedRoom = rooms.find(r => String(r.id) === formData.roomId) || rooms[0];
@@ -77,7 +82,8 @@ export function BookingPage() {
     return days > 0 ? days : 1;
   }, [formData.checkIn, formData.checkOut]);
 
-  const nightlyRate = selectedRoom ? getNightlyRate(selectedRoom, formData.guests) : 0;
+  const baseRate = selectedRoom ? getNightlyRate(selectedRoom, formData.guests) : 0;
+  const nightlyRate = discount.active ? Math.round(baseRate * (1 - discount.percent / 100)) : baseRate;
   const totalAmount = nightlyRate * nights;
   const reservationFee = 1000;
 
@@ -146,6 +152,8 @@ export function BookingPage() {
           check_out: formData.checkOut,
           guests: formData.guests,
           total_amount: totalAmount,
+          reservation_fee: reservationFee,
+          balance: totalAmount - reservationFee,
           payment_proof_url: base64Url,
           status: "pending",
         })
@@ -202,8 +210,18 @@ export function BookingPage() {
             </div>
             <div className="flex justify-between border-t pt-2">
               <span className="text-gray-500">Total Amount</span>
-              <span className="font-bold text-green-600">₱{totalAmount.toLocaleString()}</span>
+              <span className="font-bold">₱{totalAmount.toLocaleString()}</span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Reservation Fee Paid</span>
+              <span className="font-bold text-green-600">₱{reservationFee.toLocaleString()}</span>
+            </div>
+            {totalAmount - reservationFee > 0 && (
+              <div className="flex justify-between bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                <span className="text-orange-800 font-semibold">Balance Due at Check-in</span>
+                <span className="font-bold text-orange-700">₱{(totalAmount - reservationFee).toLocaleString()}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-gray-500">Status</span>
               <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded text-xs font-bold">PENDING REVIEW</span>
@@ -416,9 +434,17 @@ export function BookingPage() {
                       <span className="text-gray-500">Room</span>
                       <span className="font-medium text-right max-w-[60%]">{selectedRoom.name}</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-start">
                       <span className="text-gray-500">Rate</span>
-                      <span className="font-medium">₱{nightlyRate.toLocaleString()}/night</span>
+                      <span className="text-right">
+                        {discount.active && (
+                          <span className="block text-xs line-through text-gray-400">₱{baseRate.toLocaleString()}/night</span>
+                        )}
+                        <span className="font-medium">₱{nightlyRate.toLocaleString()}/night</span>
+                        {discount.active && (
+                          <span className="ml-1 text-xs bg-orange-100 text-orange-700 font-bold px-1 rounded">-{discount.percent}%</span>
+                        )}
+                      </span>
                     </div>
                   </>
                 )}
