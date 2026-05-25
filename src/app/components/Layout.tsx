@@ -1,5 +1,5 @@
 ﻿import { Outlet, Link, useLocation } from "react-router";
-import { Menu, X, Sun, BatteryCharging } from "lucide-react";
+import { Menu, X, Sun } from "lucide-react";
 import { useState } from "react";
 import { ChatWidget } from "./ChatWidget";
 
@@ -9,21 +9,12 @@ export function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-gray-50 text-gray-900">
-      {/* Top Bar - Solar Branding */}
-      <div className="bg-black text-orange-400 py-2 px-4 text-xs sm:text-sm font-medium text-center flex items-center justify-center gap-2">
-        <Sun className="w-4 h-4 animate-spin-slow" />
-        <span>24/7 Solar Power — No Brownouts!</span>
-        <BatteryCharging className="w-4 h-4 ml-1" />
-      </div>
-
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 rounded-full bg-orange-400 flex items-center justify-center transition-transform group-hover:scale-105">
-              <Sun className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-xl tracking-tight text-gray-900">CheckInGo</span>
+            <Sun className="w-8 h-8 text-[#FFA500] transition-transform group-hover:scale-105" />
+            <span className="font-bold text-xl tracking-tight text-[#2C3E50]">CheckInGo</span>
           </Link>
 
           {/* Desktop Nav */}
@@ -48,7 +39,6 @@ export function Layout() {
             <MobileNavLink to="/" onClick={() => setIsMenuOpen(false)}>Home</MobileNavLink>
             <MobileNavLink to="/rooms" onClick={() => setIsMenuOpen(false)}>Rooms</MobileNavLink>
             <MobileNavLink to="/booking" onClick={() => setIsMenuOpen(false)}>Book Now</MobileNavLink>
-            <MobileNavLink to="/admin/login" onClick={() => setIsMenuOpen(false)}>Owner Login</MobileNavLink>
           </div>
         )}
       </header>
@@ -63,23 +53,16 @@ export function Layout() {
         <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
           <div>
             <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
-              <div className="w-8 h-8 rounded-full bg-orange-400 flex items-center justify-center">
-                <Sun className="w-4 h-4 text-white" />
-              </div>
+              <Sun className="w-7 h-7 text-[#FFA500]" />
               <span className="font-bold text-xl">CheckInGo</span>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed mb-4">
-              Experience the sunny island vibe with reliable comfort. 
-              Our solar-powered property ensures your stay is bright, eco-friendly, and uninterrupted.
+              Browse available rooms, pick your dates, and book in minutes. CheckInGo — where every stay feels like home.
             </p>
-            <div className="flex items-center justify-center md:justify-start gap-2 text-orange-400 text-sm font-medium">
-              <Sun className="w-4 h-4" />
-              <span>100% Solar Powered</span>
-            </div>
           </div>
           
           <div>
-            <h3 className="font-bold text-lg mb-4 text-orange-400">Location</h3>
+            <h3 className="font-bold text-lg mb-4 text-[#FFFFFF]">Location</h3>
             <p className="text-gray-300 mb-2">A. Coyoca St, Santa Fe</p>
             <p className="text-gray-300 mb-2">Cebu, Philippines</p>
             <a href="https://maps.google.com" target="_blank" rel="noreferrer" className="text-xs text-gray-500 hover:text-white underline">
@@ -88,9 +71,9 @@ export function Layout() {
           </div>
 
           <div>
-            <h3 className="font-bold text-lg mb-4 text-orange-400">Contact</h3>
+            <h3 className="font-bold text-lg mb-4 text-[#FFFFFF]">Contact</h3>
             <p className="text-gray-300 mb-2">+63 929 6280 763</p>
-            <p className="text-gray-300 mb-2">0418vjsapartelle@gmail.com</p>
+            <p className="text-gray-300 mb-2">checkingo@gmail.com</p>
             <div className="mt-4 flex justify-center md:justify-start gap-4">
               {/* Social Icons Placeholder */}
               <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center hover:bg-orange-400 hover:text-black transition-colors cursor-pointer">FB</div>
@@ -98,11 +81,8 @@ export function Layout() {
             </div>
           </div>
         </div>
-        <div className="mt-12 pt-8 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-2 text-gray-500 text-xs">
+        <div className="mt-12 pt-8 border-t border-gray-800 flex items-center justify-center gap-2 text-gray-500 text-xs">
           <span>© {new Date().getFullYear()} CheckInGo. All rights reserved.</span>
-          <Link to="/admin/login" className="text-gray-600 hover:text-orange-400 transition-colors">
-            Owner Login
-          </Link>
         </div>
       </footer>
       
