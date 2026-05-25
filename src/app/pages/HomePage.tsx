@@ -153,7 +153,7 @@ export function HomePage() {
         )}
 
         <div className="mt-6 text-center md:hidden">
-          <Link to="/rooms" className="text-orange-500 font-semibold hover:underline flex items-center gap-1 justify-center">
+          <Link to="/rooms" className="text-black font-semibold hover:underline flex items-center gap-1 justify-center">
             View All Rooms <ChevronRight className="w-4 h-4" />
           </Link>
         </div>

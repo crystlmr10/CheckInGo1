@@ -4,6 +4,19 @@ import { Calendar, CreditCard, ChevronLeft, Upload, Check, Loader2, User, Phone,
 import { motion } from "motion/react";
 import { supabase, type Room } from "../../lib/supabase";
 
+const ROOM_GUEST_RANGE: Record<string, { min: number; max: number }> = {
+  Single:   { min: 1, max: 1 },
+  Standard: { min: 2, max: 3 },
+  Family:   { min: 4, max: 5 },
+  Barkada:  { min: 1, max: 8 },
+};
+
+function getNightlyRate(room: Room, guests: number): number {
+  if (room.type === "Barkada") return Math.min(800 + (guests - 1) * 500, 3500);
+  const range = ROOM_GUEST_RANGE[room.type];
+  return Number(room.price) + (range ? Math.max(0, guests - range.min) * 300 : 0);
+}
+
 export function BookingPage() {
   const [searchParams] = useSearchParams();
   const initialRoomId = searchParams.get("room") || "";
@@ -21,7 +34,7 @@ export function BookingPage() {
     guestPhone: "",
     checkIn: searchParams.get("checkIn") || "",
     checkOut: searchParams.get("checkOut") || "",
-    guests: Number(searchParams.get("guests")) || 1,
+    guests: Number(searchParams.get("guests")) || 2,
     roomId: initialRoomId,
     paymentProof: null as File | null,
   });
@@ -36,8 +49,16 @@ export function BookingPage() {
         .order("name");
       if (!error && data) {
         setRooms(data as Room[]);
-        if (!initialRoomId && data.length > 0) {
-          setFormData(prev => ({ ...prev, roomId: String(data[0].id) }));
+        const firstRoom = initialRoomId
+          ? data.find(r => String(r.id) === initialRoomId)
+          : data[0];
+        if (firstRoom) {
+          const range = ROOM_GUEST_RANGE[firstRoom.type] ?? { min: 1, max: 8 };
+          setFormData(prev => ({
+            ...prev,
+            roomId: String(firstRoom.id),
+            guests: Math.min(Math.max(prev.guests, range.min), range.max),
+          }));
         }
       }
       setLoadingRooms(false);
@@ -46,6 +67,8 @@ export function BookingPage() {
   }, []);
 
   const selectedRoom = rooms.find(r => String(r.id) === formData.roomId) || rooms[0];
+  const guestRange = selectedRoom ? (ROOM_GUEST_RANGE[selectedRoom.type] ?? { min: 1, max: 8 }) : { min: 2, max: 2 };
+  const guestOptions = Array.from({ length: guestRange.max - guestRange.min + 1 }, (_, i) => guestRange.min + i);
 
   const nights = useMemo(() => {
     if (!formData.checkIn || !formData.checkOut) return 1;
@@ -54,22 +77,50 @@ export function BookingPage() {
     return days > 0 ? days : 1;
   }, [formData.checkIn, formData.checkOut]);
 
-  const totalAmount = selectedRoom ? Number(selectedRoom.price) * nights : 0;
+  const nightlyRate = selectedRoom ? getNightlyRate(selectedRoom, formData.guests) : 0;
+  const totalAmount = nightlyRate * nights;
+  const reservationFee = 1000;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleRoomChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const roomId = e.target.value;
+    const room = rooms.find(r => String(r.id) === roomId);
+    const range = room ? (ROOM_GUEST_RANGE[room.type] ?? { min: 1, max: 8 }) : { min: 1, max: 8 };
+    setFormData(prev => ({
+      ...prev,
+      roomId,
+      guests: Math.min(Math.max(prev.guests, range.min), range.max),
+    }));
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let digits = e.target.value.replace(/\D/g, "").slice(0, 11);
+    if (digits.length >= 1 && digits[0] !== "0") digits = "0" + digits.slice(0, 10);
+    if (digits.length >= 2 && digits[1] !== "9") digits = digits[0] + "9" + digits.slice(2, 11);
+    let formatted = digits;
+    if (digits.length > 7) formatted = `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+    else if (digits.length > 4) formatted = `${digits.slice(0, 4)} ${digits.slice(4)}`;
+    setFormData(prev => ({ ...prev, guestPhone: formatted }));
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
       setFormData(prev => ({ ...prev, paymentProof: e.target.files![0] }));
+      setSubmitError(null);
     }
   };
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
-    if (!formData.paymentProof || !selectedRoom) return;
+    if (!selectedRoom) return;
+    if (!formData.paymentProof) {
+      setSubmitError("Please upload your payment screenshot before submitting.");
+      return;
+    }
 
     setSubmitting(true);
     setSubmitError(null);
@@ -89,7 +140,7 @@ export function BookingPage() {
         .insert({
           room_id: Number(formData.roomId),
           guest_name: formData.guestName,
-          guest_email: formData.guestEmail || null,
+          guest_email: formData.guestEmail,
           guest_phone: formData.guestPhone,
           check_in: formData.checkIn,
           check_out: formData.checkOut,
@@ -207,21 +258,25 @@ export function BookingPage() {
                         type="tel"
                         name="guestPhone"
                         value={formData.guestPhone}
-                        onChange={handleInputChange}
+                        onChange={handlePhoneChange}
                         required
+                        pattern="09\d{2} \d{3} \d{4}"
+                        maxLength={13}
+                        title="Phone number must be in the format 09XX XXX XXXX"
                         placeholder="e.g. 09XX XXX XXXX"
                         className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-orange-400 outline-none"
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
-                        <Mail className="w-3 h-3 inline mr-1" />Email (optional)
+                        <Mail className="w-3 h-3 inline mr-1" />Email *
                       </label>
                       <input
                         type="email"
                         name="guestEmail"
                         value={formData.guestEmail}
                         onChange={handleInputChange}
+                        required
                         placeholder="e.g. maria@email.com"
                         className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-orange-400 outline-none"
                       />
@@ -263,19 +318,6 @@ export function BookingPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Guests *</label>
-                    <select
-                      name="guests"
-                      value={formData.guests}
-                      onChange={handleInputChange}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-orange-400 outline-none"
-                    >
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-                        <option key={n} value={n}>{n} Guest{n > 1 ? "s" : ""}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Room *</label>
                     {loadingRooms ? (
                       <div className="flex items-center gap-2 px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-400 text-sm">
@@ -285,16 +327,29 @@ export function BookingPage() {
                       <select
                         name="roomId"
                         value={formData.roomId}
-                        onChange={handleInputChange}
+                        onChange={handleRoomChange}
                         className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-orange-400 outline-none"
                       >
                         {rooms.map(room => (
                           <option key={room.id} value={String(room.id)}>
-                            {room.name} — ₱{Number(room.price).toLocaleString()}/night
+                            {room.name}
                           </option>
                         ))}
                       </select>
                     )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Guests *</label>
+                    <select
+                      name="guests"
+                      value={formData.guests}
+                      onChange={handleInputChange}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-orange-400 outline-none"
+                    >
+                      {guestOptions.map(n => (
+                        <option key={n} value={n}>{n} Guest{n > 1 ? "s" : ""}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </section>
@@ -304,17 +359,23 @@ export function BookingPage() {
                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                   <CreditCard className="w-5 h-5 text-orange-400" /> Payment
                 </h2>
-                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6">
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4">
                   <h3 className="font-bold text-sm text-orange-800 mb-2">GCash / Bank Transfer</h3>
-                  <p className="text-sm text-orange-900 mb-4">
-                    Scan the QR code below to pay the full amount of{" "}
-                    <strong>₱{totalAmount.toLocaleString()}</strong>, then upload your payment screenshot below.
+                  <p className="text-sm text-orange-900 mb-1">
+                    Scan the QR code below to pay the reservation fee of{" "}
+                    <strong>₱{reservationFee.toLocaleString()}</strong>, then upload your payment screenshot below.
+                  </p>
+                  <p className="text-xs text-orange-700 mb-4">
+                    Remaining balance of <strong>₱{(totalAmount - reservationFee).toLocaleString()}</strong> is due upon check-in.
                   </p>
                   <div className="flex justify-center bg-white p-4 rounded-lg border border-orange-100 max-w-xs mx-auto">
                     <div className="w-48 h-48 bg-gray-800 flex items-center justify-center text-white text-xs text-center px-4">
                       [QR CODE — Add your GCash QR here]
                     </div>
                   </div>
+                </div>
+                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-4 text-xs text-red-700">
+                  <strong>Cancellation Policy:</strong> Only 40% of the reservation fee will be refunded in case of cancellation or no-show.
                 </div>
 
                 {submitError && (
@@ -357,10 +418,14 @@ export function BookingPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Rate</span>
-                      <span className="font-medium">₱{Number(selectedRoom.price).toLocaleString()}/night</span>
+                      <span className="font-medium">₱{nightlyRate.toLocaleString()}/night</span>
                     </div>
                   </>
                 )}
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Guests</span>
+                  <span className="font-medium">{formData.guests}</span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Nights</span>
                   <span className="font-medium">{nights}</span>
@@ -380,6 +445,14 @@ export function BookingPage() {
                 <div className="border-t border-gray-100 pt-3 flex justify-between text-lg font-bold">
                   <span>Total</span>
                   <span className="text-orange-600">₱{totalAmount.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Reservation Fee (now)</span>
+                  <span className="font-bold text-green-600">₱{reservationFee.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span>Balance at check-in</span>
+                  <span>₱{(totalAmount - reservationFee).toLocaleString()}</span>
                 </div>
               </div>
 
