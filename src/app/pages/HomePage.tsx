@@ -1,14 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router";
 import { Coffee, Wifi, Wind, BedDouble, Users, ChevronRight, Star, Loader2, PenLine, Tag } from "lucide-react";
 import { supabase, type Room, getDiscountSetting, type DiscountSetting } from "../../lib/supabase";
 import { ReviewModal } from "../components/ReviewModal";
+import { format } from "date-fns";
 
-const REVIEWS = [
-  { name: "Crystal Marie Giron", date: "April 2026", rating: 5, text: "I love the owner!" },
-  { name: "Dan Monter", date: "March 2026", rating: 5, text: "Super clean rooms and the free coffee was a nice touch. Renting a bike directly from them made exploring the island so easy." },
-  { name: "Philip Andre", date: "February 2026", rating: 5, text: "Great value for money. The rooms are spacious and clean. Will definitely come back!" },
-];
+type Review = {
+  id: string;
+  guest_name: string;
+  rating: number;
+  review: string;
+  created_at: string;
+};
 
 const HIGHLIGHTS = [
   { icon: Coffee, label: "Free Coffee", desc: "Complimentary coffee every morning" },
@@ -24,9 +27,22 @@ export function HomePage() {
   const [loading, setLoading] = useState(true);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [discount, setDiscount] = useState<DiscountSetting>({ active: false, percent: 10 });
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
 
   const discountedPrice = (price: number) =>
     Math.round(price * (1 - discount.percent / 100));
+
+  const fetchReviews = useCallback(async () => {
+    setReviewsLoading(true);
+    const { data } = await supabase
+      .from("reviews")
+      .select("id, guest_name, rating, review, created_at")
+      .order("created_at", { ascending: false })
+      .limit(3);
+    if (data) setReviews(data as Review[]);
+    setReviewsLoading(false);
+  }, []);
 
   useEffect(() => {
     async function fetchPreviews() {
@@ -51,7 +67,8 @@ export function HomePage() {
       setLoading(false);
     }
     fetchPreviews();
-  }, []);
+    fetchReviews();
+  }, [fetchReviews]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -174,7 +191,7 @@ export function HomePage() {
                   </p>
                   <p className="text-sm text-gray-500 mb-4 line-clamp-2">{room.description}</p>
                   <Link
-                    to="/rooms"
+                    to={`/booking?room=${room.id}`}
                     className="block text-center bg-black text-white font-bold py-2.5 rounded-xl hover:bg-orange-500 transition-colors text-sm"
                   >
                     Book Now
@@ -204,24 +221,41 @@ export function HomePage() {
               <PenLine className="w-4 h-4" /> Write a Review
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {REVIEWS.map((review) => (
-              <div key={review.name} className="bg-white rounded-2xl p-6 shadow-sm border-l-4 border-[#FFA500]">
-                <div className="flex gap-1 mb-3">
-                  {[...Array(review.rating)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 text-[#FFA500] fill-[#FFA500]" />
-                  ))}
+
+          {reviewsLoading ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="w-7 h-7 text-orange-400 animate-spin" />
+            </div>
+          ) : reviews.length === 0 ? (
+            <div className="text-center py-10 text-[#2C3E50]/40 text-sm">
+              No reviews yet. Be the first to share your experience!
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {reviews.map((r) => (
+                <div key={r.id} className="bg-white rounded-2xl p-6 shadow-sm border-l-4 border-[#FFA500]">
+                  <div className="flex gap-1 mb-3">
+                    {[...Array(r.rating)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-[#FFA500] fill-[#FFA500]" />
+                    ))}
+                  </div>
+                  <p className="text-[#2C3E50]/80 text-sm italic mb-4">"{r.review}"</p>
+                  <p className="font-bold text-[#2C3E50] text-sm">{r.guest_name}</p>
+                  <p className="text-[#2C3E50]/50 text-xs">
+                    {format(new Date(r.created_at), "MMMM yyyy")}
+                  </p>
                 </div>
-                <p className="text-[#2C3E50]/80 text-sm italic mb-4">"{review.text}"</p>
-                <p className="font-bold text-[#2C3E50] text-sm">{review.name}</p>
-                <p className="text-[#2C3E50]/50 text-xs">{review.date}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
-      <ReviewModal isOpen={reviewModalOpen} onClose={() => setReviewModalOpen(false)} />
+      <ReviewModal
+        isOpen={reviewModalOpen}
+        onClose={() => setReviewModalOpen(false)}
+        onSubmitted={fetchReviews}
+      />
     </div>
   );
 }
