@@ -12,13 +12,7 @@ import { PaymentsPage } from "./pages/admin/PaymentsPage";
 import { KitchenPage } from "./pages/admin/KitchenPage";
 import { ReportsPage } from "./pages/admin/ReportsPage";
 import { MessagesPage } from "./pages/admin/MessagesPage";
-
-const AdminPlaceholder = ({ title }: { title: string }) => (
-  <div className="p-8 text-center">
-    <h1 className="text-2xl font-bold mb-4">{title}</h1>
-    <p className="text-gray-500">This module is under development.</p>
-  </div>
-);
+import { SettingsPage } from "./pages/admin/SettingsPage";
 
 export const router = createBrowserRouter([
   {
@@ -36,7 +30,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: AdminLoginPage },
       { path: "login", Component: AdminLoginPage },
-      { 
+      {
         path: "dashboard",
         Component: AdminLayout,
         children: [
@@ -46,9 +40,9 @@ export const router = createBrowserRouter([
           { path: "kitchen", Component: KitchenPage },
           { path: "messages", Component: MessagesPage },
           { path: "reports", Component: ReportsPage },
-          { path: "settings", element: <AdminPlaceholder title="System Settings" /> },
-        ]
-      }
+          { path: "settings", Component: SettingsPage },
+        ],
+      },
     ],
   },
 ]);

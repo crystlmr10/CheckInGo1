@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, Link } from "react-router";
 import { Calendar, CreditCard, ChevronLeft, Upload, Check, Loader2, User, Phone, Mail, AlertCircle } from "lucide-react";
 import { motion } from "motion/react";
-import { supabase, type Room } from "../../lib/supabase";
+import { supabase, type Room, getDiscountSetting, type DiscountSetting } from "../../lib/supabase";
 
 export function BookingPage() {
   const [searchParams] = useSearchParams();
@@ -14,6 +14,8 @@ export function BookingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmedBookingId, setConfirmedBookingId] = useState("");
+
+  const [discount, setDiscount] = useState<DiscountSetting>({ active: false, percent: 10 });
 
   const [formData, setFormData] = useState({
     guestName: "",
@@ -54,7 +56,9 @@ export function BookingPage() {
     return days > 0 ? days : 1;
   }, [formData.checkIn, formData.checkOut]);
 
-  const totalAmount = selectedRoom ? Number(selectedRoom.price) * nights : 0;
+  const baseAmount = selectedRoom ? Number(selectedRoom.price) * nights : 0;
+  const discountAmount = discount.active ? Math.round(baseAmount * discount.percent / 100) : 0;
+  const totalAmount = baseAmount - discountAmount;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;

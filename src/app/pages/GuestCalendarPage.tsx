@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, type Room } from "../../lib/supabase";
@@ -20,6 +21,7 @@ function toDateStr(date: Date) {
 }
 
 export function GuestCalendarPage() {
+  const navigate = useNavigate();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [bookings, setBookings] = useState<BookingSlot[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -320,10 +322,17 @@ export function GuestCalendarPage() {
                     ))}
                   </div>
                   <button
-                    onClick={() => window.location.href = `/rooms`}
+                    onClick={() => {
+                      const { availableRooms } = selectedDayDetails;
+                      if (availableRooms.length === 1) {
+                        navigate(`/booking?room=${availableRooms[0].id}`);
+                      } else {
+                        navigate(`/rooms?type=${encodeURIComponent(selectedCategory)}`);
+                      }
+                    }}
                     style={{ width: "100%", padding: "14px", marginTop: "20px", backgroundColor: "#F97316", color: "#000", border: "2px solid #000", borderRadius: "12px", fontWeight: "bold", fontSize: "1rem", cursor: "pointer", boxShadow: "0 4px 0 #000" }}
                   >
-                    Book This Room
+                    {selectedDayDetails.availableRooms.length === 1 ? "Book This Room" : "See Available Rooms"}
                   </button>
                 </div>
               )}

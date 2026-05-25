@@ -6,7 +6,7 @@ import {
   startOfMonth,
   endOfMonth,
 } from "date-fns";
-import { Users, DollarSign, Clock, Loader2, TrendingUp } from "lucide-react";
+import { Users, DollarSign, Clock, Loader2, TrendingUp, XCircle, CheckCircle, ExternalLink } from "lucide-react";
 import { supabase, type Room, type Booking } from "../../../lib/supabase";
 
 const DAYS = 14;
@@ -29,6 +29,14 @@ function getBlockStyle(checkIn: string, checkOut: string, windowStart: Date) {
   };
 }
 
+const formatDate = (d: string) =>
+  new Date(d).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+
+const nightsCount = (b: Booking) => {
+  const diff = new Date(b.check_out).getTime() - new Date(b.check_in).getTime();
+  return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+};
+
 export function AdminDashboard() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [scheduleBookings, setScheduleBookings] = useState<Booking[]>([]);
@@ -36,6 +44,18 @@ export function AdminDashboard() {
   const [monthlyRevenue, setMonthlyRevenue] = useState(0);
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [loadingBookings, setLoadingBookings] = useState(true);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [updating, setUpdating] = useState(false);
+
+  const updateStatus = async (id: string, status: "approved" | "rejected") => {
+    setUpdating(true);
+    const { error } = await supabase.from("bookings").update({ status }).eq("id", id);
+    if (!error) {
+      setScheduleBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
+      setSelectedBooking(prev => prev?.id === id ? { ...prev, status } : prev);
+    }
+    setUpdating(false);
+  };
 
   const today = useMemo(() => new Date(), []);
   const windowStart = useMemo(() => {
@@ -51,45 +71,56 @@ export function AdminDashboard() {
   );
 
   useEffect(() => {
-    // Fetch rooms
-    supabase.from("rooms").select("*").order("id").then(({ data }) => {
-      if (data) setRooms(data as Room[]);
-      setLoadingRooms(false);
-    });
-
-    // Fetch schedule bookings (14-day window)
     const winStart = toDateStr(windowStart);
     const winEnd = toDateStr(addDays(windowStart, DAYS - 1));
-    supabase
-      .from("bookings")
-      .select("*, rooms(name, type)")
-      .neq("status", "rejected")
-      .lte("check_in", winEnd)
-      .gte("check_out", winStart)
-      .then(({ data }) => {
-        if (data) setScheduleBookings(data as Booking[]);
-        setLoadingBookings(false);
-      });
-
-    // Pending count
-    supabase
-      .from("bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "pending")
-      .then(({ count }) => setPendingCount(count ?? 0));
-
-    // Monthly revenue (approved bookings this month)
     const monthStart = toDateStr(startOfMonth(today));
     const monthEnd = toDateStr(endOfMonth(today));
-    supabase
-      .from("bookings")
-      .select("total_amount")
-      .eq("status", "approved")
-      .gte("check_in", monthStart)
-      .lte("check_in", monthEnd)
-      .then(({ data }) => {
-        if (data) setMonthlyRevenue(data.reduce((sum, b) => sum + Number(b.total_amount), 0));
+
+    function fetchRooms() {
+      supabase.from("rooms").select("*").order("id").then(({ data }) => {
+        if (data) setRooms(data as Room[]);
+        setLoadingRooms(false);
       });
+    }
+
+    function fetchAnalytics() {
+      supabase
+        .from("bookings")
+        .select("*, rooms(name, type)")
+        .neq("status", "rejected")
+        .lte("check_in", winEnd)
+        .gte("check_out", winStart)
+        .then(({ data }) => {
+          if (data) setScheduleBookings(data as Booking[]);
+          setLoadingBookings(false);
+        });
+
+      supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending")
+        .then(({ count }) => setPendingCount(count ?? 0));
+
+      supabase
+        .from("bookings")
+        .select("total_amount")
+        .eq("status", "approved")
+        .gte("check_in", monthStart)
+        .lte("check_in", monthEnd)
+        .then(({ data }) => {
+          if (data) setMonthlyRevenue(data.reduce((sum, b) => sum + Number(b.total_amount), 0));
+        });
+    }
+
+    fetchRooms();
+    fetchAnalytics();
+
+    const channel = supabase
+      .channel("dashboard-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, fetchAnalytics)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   // Occupancy: rooms booked today
@@ -268,6 +299,7 @@ export function AdminDashboard() {
                                   key={booking.id}
                                   className="absolute top-2 bottom-2 px-1"
                                   style={style}
+                                  onClick={() => setSelectedBooking(booking)}
                                 >
                                   <div className={`h-full rounded-md flex items-center px-2 shadow-sm text-xs font-medium truncate cursor-pointer transition-colors ${
                                     isApproved
@@ -290,6 +322,118 @@ export function AdminDashboard() {
           </div>
         )}
       </div>
+
+      {/* Booking Detail Modal */}
+      {selectedBooking && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setSelectedBooking(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col md:flex-row max-h-[90vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Payment Proof */}
+            <div className="md:w-1/2 bg-gray-100 p-6 flex items-center justify-center relative min-h-48">
+              {selectedBooking.payment_proof_url ? (
+                <>
+                  <img
+                    src={selectedBooking.payment_proof_url}
+                    alt="Proof of Payment"
+                    className="max-w-full max-h-72 object-contain shadow-lg rounded-lg"
+                  />
+                  <a
+                    href={selectedBooking.payment_proof_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="absolute bottom-4 right-4 bg-white/80 p-2 rounded-lg hover:bg-white text-gray-600 hover:text-black transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                </>
+              ) : (
+                <p className="text-gray-400 text-sm">No payment proof uploaded</p>
+              )}
+            </div>
+
+            {/* Details */}
+            <div className="md:w-1/2 p-6 flex flex-col overflow-y-auto">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h2 className="text-xl font-bold">Booking Details</h2>
+                  <p className="text-xs text-gray-400 font-mono mt-0.5">#{selectedBooking.id.slice(0, 8).toUpperCase()}</p>
+                </div>
+                <button onClick={() => setSelectedBooking(null)} className="text-gray-400 hover:text-black">
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-sm flex-1">
+                <Row label="Guest" value={selectedBooking.guest_name} />
+                <Row label="Phone" value={selectedBooking.guest_phone} />
+                {selectedBooking.guest_email && <Row label="Email" value={selectedBooking.guest_email} />}
+                <Row label="Room" value={selectedBooking.rooms?.name ?? `Room #${selectedBooking.room_id}`} />
+                <Row label="Check-in" value={formatDate(selectedBooking.check_in)} />
+                <Row label="Check-out" value={formatDate(selectedBooking.check_out)} />
+                <Row label="Nights" value={String(nightsCount(selectedBooking))} />
+                <Row label="Guests" value={String(selectedBooking.guests)} />
+                <Row label="Total" value={`₱${Number(selectedBooking.total_amount).toLocaleString()}`} bold />
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-500">Status</span>
+                  <span className={`capitalize font-bold ${
+                    selectedBooking.status === "approved" ? "text-green-600" :
+                    selectedBooking.status === "rejected" ? "text-red-600" :
+                    "text-orange-600"
+                  }`}>
+                    {selectedBooking.status}
+                  </span>
+                </div>
+                <Row label="Submitted" value={formatDate(selectedBooking.created_at)} />
+              </div>
+
+              {selectedBooking.status === "pending" && (
+                <div className="grid grid-cols-2 gap-3 mt-6">
+                  <button
+                    onClick={() => updateStatus(selectedBooking.id, "rejected")}
+                    disabled={updating}
+                    className="flex items-center justify-center gap-2 bg-red-50 text-red-600 font-bold py-3 rounded-xl hover:bg-red-100 transition-colors disabled:opacity-50"
+                  >
+                    {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                    Reject
+                  </button>
+                  <button
+                    onClick={() => updateStatus(selectedBooking.id, "approved")}
+                    disabled={updating}
+                    className="flex items-center justify-center gap-2 bg-green-500 text-white font-bold py-3 rounded-xl hover:bg-green-600 transition-colors disabled:opacity-50 shadow-lg shadow-green-200"
+                  >
+                    {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                    Approve
+                  </button>
+                </div>
+              )}
+
+              {selectedBooking.status !== "pending" && (
+                <div className={`mt-6 text-center py-3 rounded-xl font-bold text-sm ${
+                  selectedBooking.status === "approved"
+                    ? "bg-green-50 text-green-700 border border-green-200"
+                    : "bg-red-50 text-red-700 border border-red-200"
+                }`}>
+                  {selectedBooking.status === "approved" ? "✓ Payment Approved" : "✗ Payment Rejected"}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <div className="flex justify-between py-2 border-b border-gray-100">
+      <span className="text-gray-500">{label}</span>
+      <span className={bold ? "font-bold text-lg" : "font-medium text-right"}>{value}</span>
     </div>
   );
 }
