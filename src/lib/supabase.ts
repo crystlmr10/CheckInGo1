@@ -34,3 +34,23 @@ export type Room = {
   amenities: string[] | null;
   available: number;
 }
+
+export type DiscountSetting = {
+  active: boolean;
+  percent: 10 | 20 | 30;
+};
+
+export async function getDiscountSetting(): Promise<DiscountSetting> {
+  const { data } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", "discount")
+    .maybeSingle();
+  if (data?.value && typeof data.value === "object") {
+    return {
+      active: Boolean(data.value.active),
+      percent: (data.value.percent as 10 | 20 | 30) || 10,
+    };
+  }
+  return { active: false, percent: 10 };
+}

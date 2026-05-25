@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, Link } from "react-router";
 import { Calendar, CreditCard, ChevronLeft, Upload, Check, Loader2, User, Phone, Mail, AlertCircle } from "lucide-react";
 import { motion } from "motion/react";
-import { supabase, type Room } from "../../lib/supabase";
+import { supabase, type Room, getDiscountSetting, type DiscountSetting } from "../../lib/supabase";
 
 const ROOM_GUEST_RANGE: Record<string, { min: number; max: number }> = {
   Single:   { min: 1, max: 1 },
@@ -27,6 +27,7 @@ export function BookingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmedBookingId, setConfirmedBookingId] = useState("");
+  const [discount, setDiscount] = useState<DiscountSetting>({ active: false, percent: 10 });
 
   const [formData, setFormData] = useState({
     guestName: "",
@@ -61,6 +62,7 @@ export function BookingPage() {
           }));
         }
       }
+      getDiscountSetting().then(setDiscount);
       setLoadingRooms(false);
     }
     fetchRooms();
@@ -77,7 +79,8 @@ export function BookingPage() {
     return days > 0 ? days : 1;
   }, [formData.checkIn, formData.checkOut]);
 
-  const nightlyRate = selectedRoom ? getNightlyRate(selectedRoom, formData.guests) : 0;
+  const baseRate = selectedRoom ? getNightlyRate(selectedRoom, formData.guests) : 0;
+  const nightlyRate = discount.active ? Math.round(baseRate * (1 - discount.percent / 100)) : baseRate;
   const totalAmount = nightlyRate * nights;
   const reservationFee = 1000;
 

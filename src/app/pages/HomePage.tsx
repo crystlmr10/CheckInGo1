@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
-import { Coffee, Wifi, Wind, BedDouble, Users, ChevronRight, Star, Loader2, PenLine } from "lucide-react";
-import { supabase, type Room } from "../../lib/supabase";
+import { Coffee, Wifi, Wind, BedDouble, Users, ChevronRight, Star, Loader2, PenLine, Tag } from "lucide-react";
+import { supabase, type Room, getDiscountSetting, type DiscountSetting } from "../../lib/supabase";
 import { ReviewModal } from "../components/ReviewModal";
 
 const REVIEWS = [
@@ -23,18 +23,24 @@ export function HomePage() {
   const [previews, setPreviews] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [discount, setDiscount] = useState<DiscountSetting>({ active: false, percent: 10 });
+
+  const discountedPrice = (price: number) =>
+    Math.round(price * (1 - discount.percent / 100));
 
   useEffect(() => {
     async function fetchPreviews() {
-      const { data, error } = await supabase
-        .from("rooms")
-        .select("id, name, type, price, capacity, image_url, description")
-        .in("type", PREVIEW_TYPES)
-        .order("type")
-        .order("id");
+      const [{ data, error }] = await Promise.all([
+        supabase
+          .from("rooms")
+          .select("id, name, type, price, capacity, image_url, description")
+          .in("type", PREVIEW_TYPES)
+          .order("type")
+          .order("id"),
+        getDiscountSetting().then(setDiscount),
+      ]);
 
       if (!error && data) {
-        // Pick one representative room per type
         const picked: Room[] = [];
         for (const type of PREVIEW_TYPES) {
           const match = data.find(r => r.type === type);
@@ -49,6 +55,14 @@ export function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Sale Banner */}
+      {discount.active && (
+        <div className="bg-orange-500 text-white text-center py-2.5 px-4 flex items-center justify-center gap-2 text-sm font-semibold">
+          <Tag className="w-4 h-4" />
+          Special Offer — {discount.percent}% OFF on all rooms! Book now and save.
+        </div>
+      )}
+
       {/* Hero */}
       <section className="relative bg-black text-white overflow-hidden">
         <div className="absolute inset-0">
@@ -132,8 +146,27 @@ export function HomePage() {
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="font-bold text-lg text-gray-900">{room.name}</h3>
                     <div className="text-right">
-                      <p className="font-bold text-gray-900">₱{Number(room.price).toLocaleString()}</p>
-                      <p className="text-xs text-gray-400">per night</p>
+                      {discount.active ? (
+                        <>
+                          <div className="flex items-center gap-1.5 justify-end">
+                            <span className="text-xs text-gray-400 line-through">
+                              ₱{Number(room.price).toLocaleString()}
+                            </span>
+                            <span className="bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                              -{discount.percent}%
+                            </span>
+                          </div>
+                          <p className="font-bold text-gray-900 text-green-600">
+                            ₱{discountedPrice(Number(room.price)).toLocaleString()}
+                          </p>
+                          <p className="text-xs text-gray-400">per night</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-bold text-gray-900">₱{Number(room.price).toLocaleString()}</p>
+                          <p className="text-xs text-gray-400">per night</p>
+                        </>
+                      )}
                     </div>
                   </div>
                   <p className="text-sm text-gray-500 mb-3 flex items-center gap-1">

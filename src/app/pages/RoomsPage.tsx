@@ -1,29 +1,37 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router";
-import { User, Loader2 } from "lucide-react";
-import { supabase, type Room } from "../../lib/supabase";
+import { Link, useSearchParams } from "react-router";
+import { User, Loader2, Tag } from "lucide-react";
+import { supabase, type Room, getDiscountSetting, type DiscountSetting } from "../../lib/supabase";
 
 const CATEGORIES = ["All Rooms", "Barkada", "Family", "Standard", "Single"];
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080";
 
 export function RoomsPage() {
+  const [searchParams] = useSearchParams();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState("All Rooms");
+  const [activeCategory, setActiveCategory] = useState(() => {
+    const typeParam = searchParams.get("type");
+    return typeParam && CATEGORIES.includes(typeParam) ? typeParam : "All Rooms";
+  });
+  const [discount, setDiscount] = useState<DiscountSetting>({ active: false, percent: 10 });
 
   useEffect(() => {
-    async function fetchRooms() {
-      const { data, error } = await supabase.from("rooms").select("*").order("id");
-      if (error) {
-        setFetchError(error.message);
-      } else if (data) {
-        setRooms(data);
-      }
+    async function load() {
+      const [{ data, error }] = await Promise.all([
+        supabase.from("rooms").select("*").order("id"),
+        getDiscountSetting().then(setDiscount),
+      ]);
+      if (error) setFetchError(error.message);
+      else if (data) setRooms(data);
       setLoading(false);
     }
-    fetchRooms();
+    load();
   }, []);
+
+  const discountedPrice = (price: number) =>
+    Math.round(price * (1 - discount.percent / 100));
 
   const filteredRooms = activeCategory === "All Rooms"
     ? rooms
@@ -51,6 +59,14 @@ export function RoomsPage() {
 
   return (
     <div className="min-h-screen bg-orange-50">
+      {/* Sale Banner */}
+      {discount.active && (
+        <div className="bg-orange-500 text-white text-center py-2.5 px-4 flex items-center justify-center gap-2 text-sm font-semibold">
+          <Tag className="w-4 h-4" />
+          Special Offer — {discount.percent}% OFF on all rooms! Book now and save.
+        </div>
+      )}
+
       {/* Orange Header Bar */}
       <div className="bg-[#FFB347] px-6 md:px-10 py-5 flex flex-wrap items-center gap-4">
         <h1 className="text-white text-3xl font-bold mr-4">Rooms</h1>
@@ -107,8 +123,27 @@ export function RoomsPage() {
                       </p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="font-bold text-xl text-gray-900">₱{Number(room.price).toLocaleString()}</p>
-                      <p className="text-xs text-gray-400">per night</p>
+                      {discount.active ? (
+                        <>
+                          <div className="flex items-center gap-1.5 justify-end">
+                            <span className="text-xs text-gray-400 line-through">
+                              ₱{Number(room.price).toLocaleString()}
+                            </span>
+                            <span className="bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                              -{discount.percent}%
+                            </span>
+                          </div>
+                          <p className="font-bold text-xl text-green-600">
+                            ₱{discountedPrice(Number(room.price)).toLocaleString()}
+                          </p>
+                          <p className="text-xs text-gray-400">per night</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-bold text-xl text-gray-900">₱{Number(room.price).toLocaleString()}</p>
+                          <p className="text-xs text-gray-400">per night</p>
+                        </>
+                      )}
                     </div>
                   </div>
 
