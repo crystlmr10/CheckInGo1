@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, Send, Loader2, MessageSquare } from "lucide-react";
+import { Search, Send, Loader2, MessageSquare, Trash2 } from "lucide-react";
 import { supabase, type ChatSession, type ChatMessage } from "../../../lib/supabase";
 
 function guestLabel(s: ChatSession) {
@@ -121,6 +121,14 @@ export function MessagesPage() {
       .eq("session_id", active.session_id);
   };
 
+  const handleDelete = async (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    await supabase.from("chat_messages").delete().eq("session_id", sessionId);
+    await supabase.from("chat_sessions").delete().eq("session_id", sessionId);
+    setSessions(prev => prev.filter(s => s.session_id !== sessionId));
+    if (active?.session_id === sessionId) setActive(null);
+  };
+
   const filtered = sessions.filter(s =>
     guestLabel(s).toLowerCase().includes(search.toLowerCase()) ||
     (s.last_message ?? "").toLowerCase().includes(search.toLowerCase())
@@ -175,11 +183,20 @@ export function MessagesPage() {
                   {session.last_message ?? "Started a conversation"}
                 </p>
               </div>
-              {session.unread_count > 0 && (
-                <div className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                  {session.unread_count > 9 ? "9+" : session.unread_count}
-                </div>
-              )}
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                {session.unread_count > 0 && (
+                  <div className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    {session.unread_count > 9 ? "9+" : session.unread_count}
+                  </div>
+                )}
+                <button
+                  onClick={e => handleDelete(e, session.session_id)}
+                  className="text-gray-300 hover:text-red-500 transition-colors"
+                  title="Delete conversation"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           ))}
         </div>

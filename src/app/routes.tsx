@@ -9,7 +9,6 @@ import { AdminLayout } from "./pages/admin/AdminLayout";
 import { AdminLoginPage } from "./pages/admin/LoginPage";
 import { CalendarPage } from "./pages/admin/CalendarPage";
 import { PaymentsPage } from "./pages/admin/PaymentsPage";
-import { KitchenPage } from "./pages/admin/KitchenPage";
 import { ReportsPage } from "./pages/admin/ReportsPage";
 import { MessagesPage } from "./pages/admin/MessagesPage";
 import { SettingsPage } from "./pages/admin/SettingsPage";
@@ -37,7 +36,6 @@ export const router = createBrowserRouter([
           { index: true, Component: AdminDashboard },
           { path: "calendar", Component: CalendarPage },
           { path: "payments", Component: PaymentsPage },
-          { path: "kitchen", Component: KitchenPage },
           { path: "messages", Component: MessagesPage },
           { path: "reports", Component: ReportsPage },
           { path: "settings", Component: SettingsPage },
