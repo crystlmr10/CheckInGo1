@@ -29,8 +29,6 @@ export function BookingPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmedBookingId, setConfirmedBookingId] = useState("");
 
-  const [discount, setDiscount] = useState<DiscountSetting>({ active: false, percent: 10 });
-
   const [formData, setFormData] = useState({
     guestName: "",
     guestEmail: "",
@@ -68,7 +66,6 @@ export function BookingPage() {
           }));
         }
       }
-      getDiscountSetting().then(setDiscount);
       setLoadingRooms(false);
     }
     fetchData();
