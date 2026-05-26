@@ -28,6 +28,8 @@ export function BookingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmedBookingId, setConfirmedBookingId] = useState("");
+  const [dateConflict, setDateConflict] = useState(false);
+  const [checkingConflict, setCheckingConflict] = useState(false);
 
   const [formData, setFormData] = useState({
     guestName: "",
@@ -70,6 +72,30 @@ export function BookingPage() {
     }
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const { roomId, checkIn, checkOut } = formData;
+    if (!roomId || !checkIn || !checkOut || checkOut <= checkIn) {
+      setDateConflict(false);
+      return;
+    }
+    let cancelled = false;
+    setCheckingConflict(true);
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("room_id", Number(roomId))
+      .in("status", ["approved", "pending"])
+      .lt("check_in", checkOut)
+      .gt("check_out", checkIn)
+      .then(({ count }) => {
+        if (!cancelled) {
+          setDateConflict((count ?? 0) > 0);
+          setCheckingConflict(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [formData.roomId, formData.checkIn, formData.checkOut]);
 
   const selectedRoom = rooms.find(r => String(r.id) === formData.roomId) || rooms[0];
   const guestRange = selectedRoom ? (ROOM_GUEST_RANGE[selectedRoom.type] ?? { min: 1, max: 8 }) : { min: 2, max: 2 };
@@ -132,7 +158,22 @@ export function BookingPage() {
     setSubmitError(null);
 
     try {
-      // 1. Convert payment proof to base64
+      // 1. Re-check conflict at submit time
+      const { count } = await supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("room_id", Number(formData.roomId))
+        .in("status", ["approved", "pending"])
+        .lt("check_in", formData.checkOut)
+        .gt("check_out", formData.checkIn);
+
+      if ((count ?? 0) > 0) {
+        setSubmitError("This room is already booked for the selected dates. Please choose different dates.");
+        setSubmitting(false);
+        return;
+      }
+
+      // 2. Convert payment proof to base64
       const base64Url = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
@@ -318,7 +359,7 @@ export function BookingPage() {
                       onChange={handleInputChange}
                       required
                       min={new Date().toISOString().split("T")[0]}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-orange-400 outline-none"
+                      className={`w-full bg-gray-50 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-orange-400 outline-none ${dateConflict ? "border-red-400" : "border-gray-200"}`}
                     />
                   </div>
                   <div>
@@ -330,10 +371,21 @@ export function BookingPage() {
                       min={formData.checkIn}
                       onChange={handleInputChange}
                       required
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-orange-400 outline-none"
+                      className={`w-full bg-gray-50 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-orange-400 outline-none ${dateConflict ? "border-red-400" : "border-gray-200"}`}
                     />
                   </div>
                 </div>
+                {checkingConflict && (
+                  <div className="flex items-center gap-2 text-xs text-gray-400 mb-3">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Checking availability...
+                  </div>
+                )}
+                {!checkingConflict && dateConflict && (
+                  <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm mb-3">
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    This room is already booked for the selected dates. Please choose different dates or a different room.
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Room *</label>
@@ -485,7 +537,7 @@ export function BookingPage() {
               <button
                 type="submit"
                 form="booking-form"
-                disabled={submitting}
+                disabled={submitting || dateConflict || checkingConflict}
                 className="w-full bg-black text-white py-3 rounded-lg font-bold hover:bg-orange-500 transition-colors shadow-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {submitting ? (
